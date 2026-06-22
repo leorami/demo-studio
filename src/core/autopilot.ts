@@ -5,7 +5,7 @@
  * module has no dependency on any host router or route-key type.
  */
 
-import { scrollContainerToTestId } from "./dom.js";
+import { scrollContainerToTestId, waitForTestId } from "./dom.js";
 import {
   buildDemoPacing,
   familiarityFactor,
@@ -130,6 +130,8 @@ export interface AutopilotOptions {
   seed?: (target: string) => void;
   onEvent: AutopilotEventHandler;
   navigateSettleMs?: number;
+  /** Max wait for click targets and post-navigate warm workplace mount. */
+  elementWaitMs?: number;
   mainScrollTestId?: string;
 }
 
@@ -143,6 +145,7 @@ function readingFingerPosition(): { x: number; y: number } {
 export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
   const pacing = opts.pacing ?? buildDemoPacing(1.5);
   const navigateSettleMs = opts.navigateSettleMs ?? 900;
+  const elementWaitMs = opts.elementWaitMs ?? 12_000;
   const visitCounts = new Map<string, number>();
 
   let aborted = false;
@@ -237,6 +240,10 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
         opts.navigate(step.routeId, step.hashQuery ? { hashQuery: step.hashQuery } : undefined);
         emit({ type: "move", x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight / 2) });
         await sleep(navigateSettleMs);
+        if (step.hashQuery?.includes("workplace=warm")) {
+          await waitForTestId("kyzmet-workplace-app-host", { timeoutMs: elementWaitMs });
+          await sleep(120);
+        }
         break;
       }
       case "scroll": {
@@ -244,7 +251,7 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
         break;
       }
       case "click": {
-        const el = document.querySelector(`[data-testid="${step.testId}"]`) as HTMLElement | null;
+        const el = await waitForTestId(step.testId, { timeoutMs: elementWaitMs });
         if (el) {
           scrollContainerToTestId(step.testId, "instant");
           await sleep(160 + jitter(80));
