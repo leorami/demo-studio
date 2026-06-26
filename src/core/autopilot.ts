@@ -52,12 +52,22 @@ function detectScrollContainer(
     };
   };
 
-  const primaryTestId = containerTestId ?? mainScrollTestId;
-  if (primaryTestId) {
-    const primary = tryContainer(
-      document.querySelector(`[data-testid="${primaryTestId}"]`) as HTMLElement | null,
+  if (containerTestId) {
+    const explicit = document.querySelector(
+      `[data-testid="${containerTestId}"]`,
+    ) as HTMLElement | null;
+    if (!explicit) {
+      return { scrollable: 0, fullText: "", container: null };
+    }
+    const scoped = tryContainer(explicit);
+    if (scoped) return scoped;
+  }
+
+  if (mainScrollTestId) {
+    const main = tryContainer(
+      document.querySelector(`[data-testid="${mainScrollTestId}"]`) as HTMLElement | null,
     );
-    if (primary) return primary;
+    if (main) return main;
   }
 
   const winScrollable = document.documentElement.scrollHeight - window.innerHeight;
@@ -170,6 +180,10 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
     const { scrollable, fullText, container } = detectScrollContainer(
       containerTestId, opts.mainScrollTestId,
     );
+    if (scrollable <= 0) {
+      await sleep(Math.min(pacing.minPageDwell, 350));
+      return;
+    }
     const finger = readingFingerPosition();
     emit({ type: "move", x: finger.x, y: finger.y });
 
@@ -252,16 +266,18 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
       }
       case "click": {
         const el = await waitForTestId(step.testId, { timeoutMs: elementWaitMs });
-        if (el) {
-          scrollContainerToTestId(step.testId, "instant");
-          await sleep(160 + jitter(80));
-          const { x, y } = centreOf(el);
-          emit({ type: "move", x, y });
-          await sleep(220 + jitter(120));
-          emit({ type: "click", x, y, testId: step.testId });
-          el.click();
-          await sleep(navigateSettleMs);
+        if (!el) {
+          console.warn(`[demo-autopilot] click target not found: ${step.testId}`);
+          break;
         }
+        scrollContainerToTestId(step.testId, "instant");
+        await sleep(160 + jitter(80));
+        const { x, y } = centreOf(el);
+        emit({ type: "move", x, y });
+        await sleep(220 + jitter(120));
+        emit({ type: "click", x, y, testId: step.testId });
+        el.click();
+        await sleep(navigateSettleMs);
         break;
       }
       case "seed": {
