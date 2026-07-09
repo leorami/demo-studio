@@ -225,13 +225,58 @@ if (violations.length > 0) {
 
 `scanDocForBannedContent` ships with generic banned-pattern defaults (API keys, `.env` references, custody/sealed artifacts, emails, invite tokens). Hosts extend detection with `additionalPatterns` and can whitelist lines via `allowedPatterns`.
 
+Use [`docs/JOURNEY_AUTHORING_TEMPLATE.md`](docs/JOURNEY_AUTHORING_TEMPLATE.md) when authoring new journeys. Fill one template per journey and keep IDs aligned with `assertManifestMatchesJourneys()`.
+
+## prepareDemo host contract
+
+`prepareDemo` is a **host-provided hook** — it is implemented by the downstream host application, not by Demo Studio core. Demo Studio invokes it immediately before autopilot starts for the selected `journeyId`.
+
+```ts
+prepareDemo?: (journeyId: string) => void;
+```
+
+### When it runs
+
+Core calls `prepareDemo(journeyId)` once per run, after the operator starts autopilot and before the first step executes. Core does not await promises returned from host code; hosts that need async setup must either complete critical work synchronously or finish within the host's own preparation window before steps rely on that state.
+
+### Host responsibilities
+
+| Concern | Expectation |
+|---|---|
+| **Setup** | Put the host into a known baseline for the requested journey (fixtures, feature flags, mock data). Product-specific setup stays in the host repo. |
+| **Reset** | Clear stale state from prior runs: selections, drafts, cached panels, modal stacks, and route query fragments as applicable. |
+| **Replay safety** | Make consecutive replays deterministic when `JourneyResetReplayExpectation.idempotentReplay` is true. |
+| **Overlays / panels** | Dismiss dev tools, toasts, drawers, or other overlays that would block autopilot targeting. |
+| **Asynchronous work** | Host code may trigger async preparation internally, but the typed contract is synchronous (`void`). Do not assume core awaits background jobs. |
+| **Idempotency** | Safe to call multiple times for the same `journeyId` without worsening state. |
+| **Secrets / logs** | Do not log tokens, env values, or private artifact paths. Operator-facing output only. |
+| **Errors** | When setup cannot complete, surface a clear operator-facing message in the host UI and avoid starting autopilot against broken state. |
+| **Ownership** | Each host team owns `prepareDemo` behavior for its journeys and documents expectations in `JourneyAuthoringEntry.resetReplay`. |
+
+### Example (generic host)
+
+```ts
+prepareDemo(journeyId) {
+  hostStore.resetDemoBaseline();
+  hostRouter.clearTransientQueryState();
+  hostOverlays.closeNonEssentialPanels();
+  if (!hostFixtures.applyForJourney(journeyId)) {
+    hostNotifier.showOperatorError(
+      `Demo setup failed for "${journeyId}". Reset the host fixture and try again.`,
+    );
+  }
+}
+```
+
+Pair implementation with `JourneyAuthoringEntry` metadata and validate docs with `scanDocForBannedContent()` before sharing journey write-ups externally.
+
 ## Adapter contract
 
 | Adapter | Signature | Required | Purpose |
 |---|---|---|---|
 | `navigate` | `(routeId: string, options?: { hashQuery?: string }) => void` | Yes | Navigate the host app to a route |
 | `seed` | `(target: string) => void` | No | Seed demo data into the host app |
-| `prepareDemo` | `(journeyId: string) => void` | No | Reset host state before a run starts |
+| `prepareDemo` | `(journeyId: string) => void` | No | Host-provided pre-run setup — see [prepareDemo host contract](#preparedemo-host-contract) |
 
 ## Controller options
 
