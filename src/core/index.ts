@@ -49,3 +49,24 @@ export type {
   DemoStudioOptions,
   RunStatus,
 } from "./controller.js";
+
+export type {
+  JourneyAuthoringAudience,
+  JourneyAuthoringCategory,
+  JourneyAuthoringEntry,
+  JourneyOwnership,
+  JourneyPrivacyClassification,
+  JourneyResetReplayExpectation,
+  JourneyTestGuidance,
+} from "./authoring-types.js";
+
+export {
+  assertManifestMatchesJourneys,
+  scanDocForBannedContent,
+} from "./authoring-exports.js";
+export type {
+  JourneyIdSource,
+  ManifestIdEntry,
+  DocHygieneOptions,
+  DocHygieneViolation,
+} from "./authoring-exports.js";

@@ -28,6 +28,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
   },
@@ -43,10 +44,12 @@
   },
   "devDependencies": {
     "@types/react": "^18.3.0",
+    "jsdom": "^26.0.0",
     "preact": "^10.26.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tsup": "^8.4.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
   }
 }
