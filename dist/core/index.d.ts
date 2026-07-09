@@ -241,4 +241,102 @@ interface DemoStudioOptions extends DemoStudioAdapters {
 }
 declare function createDemoStudioController(opts: DemoStudioOptions): DemoStudioController;
 
-export { type AutopilotEvent, type AutopilotEventHandler, type AutopilotNavigateOptions, type AutopilotOptions, type AutopilotRun, DEFAULT_DEMO_PACING, DEMO_SPEED_DEFAULT, DEMO_SPEED_MAX, DEMO_SPEED_MIN, type DemoJourney, type DemoPacing, type DemoPacingConfig, type DemoScrollMode, type DemoStep, type DemoStudioActions, type DemoStudioAdapters, type DemoStudioController, type DemoStudioOptions, type DemoStudioSettings, type DemoStudioState, type ParsedRefinement, type RecorderState, type RunStatus, ScreencastRecorder, type ScreencastRecorderOptions, buildDemoPacing, createDemoStudioController, familiarityFactor, findJourneyById, isScreencastSupported, jitter, parseRefinement, readingTimeMs, runAutopilot, scrollContainerToTestId };
+/**
+ * Generic journey authoring metadata types.
+ *
+ * Product-agnostic metadata for documenting, classifying, and testing demo
+ * journeys in downstream host applications. These types do not embed host
+ * routes, catalog entries, or environment-specific assumptions.
+ */
+/** Intended audience for a journey's documentation and playback context. */
+type JourneyAuthoringAudience = "internal" | "external" | "developer" | "stakeholder";
+/** High-level journey category for cataloging and test selection. */
+type JourneyAuthoringCategory = "onboarding" | "feature-tour" | "workflow" | "regression" | "showcase";
+/**
+ * Privacy classification for journey content and documentation.
+ *
+ * Hosts use this to gate publication, redact sensitive captions, and enforce
+ * doc-hygiene checks before sharing demos externally.
+ */
+type JourneyPrivacyClassification = "public" | "internal-only" | "sensitive" | "restricted";
+/** Ownership metadata for maintenance and review routing. */
+interface JourneyOwnership {
+    team?: string;
+    maintainer?: string;
+    contact?: string;
+}
+/** Expectations for reset and replay behavior in downstream harnesses. */
+interface JourneyResetReplayExpectation {
+    requiresReset: boolean;
+    idempotentReplay?: boolean;
+    notes?: string;
+}
+/** Guidance for manual and automated verification of a journey. */
+interface JourneyTestGuidance {
+    smoke?: boolean;
+    regression?: boolean;
+    manualVerification?: string[];
+    automatedChecks?: string[];
+}
+/**
+ * Authoring record for a single demo journey.
+ *
+ * `id` must match the runtime `DemoJourney.id` and any host manifest entry.
+ */
+interface JourneyAuthoringEntry {
+    id: string;
+    label: string;
+    description: string;
+    audience: JourneyAuthoringAudience;
+    category: JourneyAuthoringCategory;
+    privacy: JourneyPrivacyClassification;
+    ownership?: JourneyOwnership;
+    resetReplay?: JourneyResetReplayExpectation;
+    testGuidance?: JourneyTestGuidance;
+    tags?: string[];
+}
+
+/**
+ * Manifest parity assertion for journey authoring catalogs.
+ */
+interface JourneyIdSource {
+    id: string;
+}
+interface ManifestIdEntry {
+    id: string;
+}
+/**
+ * Assert that manifest entries exactly match the provided journey IDs.
+ *
+ * Throws with explicit messages when manifest entries are missing, extra, or
+ * duplicated. Journey order is not compared — only the ID sets must match.
+ */
+declare function assertManifestMatchesJourneys(journeys: readonly JourneyIdSource[], manifest: readonly ManifestIdEntry[]): void;
+
+/**
+ * Documentation hygiene scanner for demo-studio authoring artifacts.
+ *
+ * Detects representative secret, environment, and private-artifact patterns in
+ * markdown and other text docs. Downstream hosts can extend detection via
+ * `additionalPatterns`.
+ */
+interface DocHygieneViolation {
+    pattern: string;
+    line: number;
+    excerpt: string;
+}
+interface DocHygieneOptions {
+    /** Host-specific patterns to treat as banned content. */
+    additionalPatterns?: RegExp[];
+    /** Patterns that override default bans when matched on the same line. */
+    allowedPatterns?: RegExp[];
+}
+/**
+ * Scan document content for banned secret, env, and private-artifact patterns.
+ *
+ * Returns an empty array when the document is clean. Each violation includes
+ * the matched pattern label, 1-based line number, and a trimmed excerpt.
+ */
+declare function scanDocForBannedContent(content: string, options?: DocHygieneOptions): DocHygieneViolation[];
+
+export { type AutopilotEvent, type AutopilotEventHandler, type AutopilotNavigateOptions, type AutopilotOptions, type AutopilotRun, DEFAULT_DEMO_PACING, DEMO_SPEED_DEFAULT, DEMO_SPEED_MAX, DEMO_SPEED_MIN, type DemoJourney, type DemoPacing, type DemoPacingConfig, type DemoScrollMode, type DemoStep, type DemoStudioActions, type DemoStudioAdapters, type DemoStudioController, type DemoStudioOptions, type DemoStudioSettings, type DemoStudioState, type DocHygieneOptions, type DocHygieneViolation, type JourneyAuthoringAudience, type JourneyAuthoringCategory, type JourneyAuthoringEntry, type JourneyIdSource, type JourneyOwnership, type JourneyPrivacyClassification, type JourneyResetReplayExpectation, type JourneyTestGuidance, type ManifestIdEntry, type ParsedRefinement, type RecorderState, type RunStatus, ScreencastRecorder, type ScreencastRecorderOptions, assertManifestMatchesJourneys, buildDemoPacing, createDemoStudioController, familiarityFactor, findJourneyById, isScreencastSupported, jitter, parseRefinement, readingTimeMs, runAutopilot, scanDocForBannedContent, scrollContainerToTestId };

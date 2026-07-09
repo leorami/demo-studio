@@ -724,12 +724,103 @@ function createDemoStudioController(opts) {
     }
   };
 }
+
+// src/test-utils/manifest-parity.ts
+function collectDuplicateIds(entries) {
+  const seen = /* @__PURE__ */ new Set();
+  const duplicates = /* @__PURE__ */ new Set();
+  for (const entry of entries) {
+    if (seen.has(entry.id)) {
+      duplicates.add(entry.id);
+      continue;
+    }
+    seen.add(entry.id);
+  }
+  return [...duplicates].sort();
+}
+function assertManifestMatchesJourneys(journeys, manifest) {
+  const duplicateIds = collectDuplicateIds(manifest);
+  if (duplicateIds.length > 0) {
+    throw new Error(
+      `Duplicate manifest IDs: ${duplicateIds.join(", ")}`
+    );
+  }
+  const journeyIds = new Set(journeys.map((journey) => journey.id));
+  const manifestIds = new Set(manifest.map((entry) => entry.id));
+  const missingManifestEntries = [...journeyIds].filter((id) => !manifestIds.has(id)).sort();
+  if (missingManifestEntries.length > 0) {
+    throw new Error(
+      `Missing manifest entries for journey IDs: ${missingManifestEntries.join(", ")}`
+    );
+  }
+  const extraManifestEntries = [...manifestIds].filter((id) => !journeyIds.has(id)).sort();
+  if (extraManifestEntries.length > 0) {
+    throw new Error(
+      `Extra manifest entries with no matching journey: ${extraManifestEntries.join(", ")}`
+    );
+  }
+}
+
+// src/test-utils/doc-hygiene.ts
+var DEFAULT_BANNED_PATTERNS = [
+  { label: "api-key-assignment", regex: /\b(?:api[_-]?key|secret|token)\s*=\s*\S+/i },
+  { label: "openai-sk-token", regex: /\bsk-(?:proj-)?[A-Za-z0-9]{8,}\b/ },
+  { label: "github-pat", regex: /\bghp_[A-Za-z0-9]{20,}\b/ },
+  { label: "env-file-reference", regex: /\.env(?:\.[A-Za-z0-9_-]+)?\b/i },
+  { label: "private-artifact-path", regex: /\.(?:sealed|pem|key|p12)\b/i },
+  { label: "custody-artifact-path", regex: /custody\/|\.custodian\./i },
+  { label: "email-address", regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/ },
+  { label: "invite-token", regex: /\binvite[_-]?token\s*=\s*\S+/i }
+];
+function lineMatchesPattern(line, pattern) {
+  pattern.lastIndex = 0;
+  return pattern.test(line);
+}
+function isLineAllowed(line, allowedPatterns) {
+  if (!allowedPatterns || allowedPatterns.length === 0) {
+    return false;
+  }
+  return allowedPatterns.some((pattern) => lineMatchesPattern(line, pattern));
+}
+function collectPatterns(options) {
+  const patterns = [...DEFAULT_BANNED_PATTERNS];
+  for (const regex of options?.additionalPatterns ?? []) {
+    patterns.push({
+      label: regex.source,
+      regex
+    });
+  }
+  return patterns;
+}
+function scanDocForBannedContent(content, options) {
+  const patterns = collectPatterns(options);
+  const violations = [];
+  const lines = content.split(/\r?\n/);
+  for (const [index, line] of lines.entries()) {
+    if (isLineAllowed(line, options?.allowedPatterns)) {
+      continue;
+    }
+    for (const pattern of patterns) {
+      if (!lineMatchesPattern(line, pattern.regex)) {
+        continue;
+      }
+      violations.push({
+        pattern: pattern.label,
+        line: index + 1,
+        excerpt: line.trim().slice(0, 160)
+      });
+      break;
+    }
+  }
+  return violations;
+}
 export {
   DEFAULT_DEMO_PACING,
   DEMO_SPEED_DEFAULT,
   DEMO_SPEED_MAX,
   DEMO_SPEED_MIN,
   ScreencastRecorder,
+  assertManifestMatchesJourneys,
   buildDemoPacing,
   createDemoStudioController,
   familiarityFactor,
@@ -739,5 +830,6 @@ export {
   parseRefinement,
   readingTimeMs,
   runAutopilot,
+  scanDocForBannedContent,
   scrollContainerToTestId
 };

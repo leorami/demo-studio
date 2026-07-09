@@ -176,6 +176,55 @@ const myJourney: DemoJourney = {
 
 Step kinds: `caption`, `navigate`, `scroll` (`scan` | `read`), `click`, `seed`, `pause`.
 
+## Journey authoring metadata
+
+Downstream hosts can attach product-agnostic authoring metadata to journeys for documentation, privacy review, and test selection:
+
+```ts
+import type {
+  JourneyAuthoringEntry,
+  JourneyPrivacyClassification,
+} from "@leorami/demo-studio";
+
+const authoring: JourneyAuthoringEntry = {
+  id: "hello-world",
+  label: "Hello World",
+  description: "Quick demo tour for new contributors.",
+  audience: "developer",
+  category: "onboarding",
+  privacy: "public",
+  ownership: { team: "demo-platform" },
+  resetReplay: { requiresReset: true, idempotentReplay: true },
+  testGuidance: { smoke: true },
+};
+```
+
+`JourneyAuthoringEntry.id` must match the runtime `DemoJourney.id` and any host manifest entry.
+
+## Authoring test helpers
+
+The core package exports lightweight helpers for downstream CI and doc hygiene:
+
+```ts
+import {
+  assertManifestMatchesJourneys,
+  scanDocForBannedContent,
+} from "@leorami/demo-studio";
+
+// Fail fast when manifest IDs drift from authored journeys.
+assertManifestMatchesJourneys(journeys, manifest);
+
+// Scan markdown/docs for secrets, env files, and private artifact paths.
+const violations = scanDocForBannedContent(readme, {
+  additionalPatterns: [/HOST_SPECIFIC_MARKER_\d+/],
+});
+if (violations.length > 0) {
+  throw new Error(`Doc hygiene failed: ${violations.map((v) => v.pattern).join(", ")}`);
+}
+```
+
+`scanDocForBannedContent` ships with generic banned-pattern defaults (API keys, `.env` references, custody/sealed artifacts, emails, invite tokens). Hosts extend detection with `additionalPatterns` and can whitelist lines via `allowedPatterns`.
+
 ## Adapter contract
 
 | Adapter | Signature | Required | Purpose |
