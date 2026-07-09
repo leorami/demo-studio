@@ -315,15 +315,19 @@ Import `@leorami/demo-studio/styles.css` and override CSS variables in `:root` (
 
 Full variable list: see `src/styles/demo-studio.css`.
 
-In kyzmet OS Lab the variables are mapped to existing kyzmet design tokens so the visual appearance is unchanged:
+Downstream hosts can map Demo Studio variables to existing **host theme tokens** so the panel matches the surrounding application chrome:
 
 ```css
 :root {
-  --demo-studio-bg: var(--kz-dev-tool-studio-bg);
-  --demo-studio-fg: var(--kz-dev-tool-studio-fg);
+  /* ExampleHost maps demo-studio tokens to its design system */
+  --demo-studio-bg: var(--example-host-dev-tool-studio-bg);
+  --demo-studio-fg: var(--example-host-dev-tool-studio-fg);
+  --demo-studio-panel-accent: var(--example-host-accent);
   /* … */
 }
 ```
+
+Keep token names and mapping logic in the downstream application — upstream docs use neutral placeholders only.
 
 ---
 
