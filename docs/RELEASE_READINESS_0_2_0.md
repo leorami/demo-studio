@@ -3,7 +3,17 @@
 **Assessment date:** 2026-07-09  
 **Base branch:** `main` @ `5e02b021576d6d08b4ef24d74d91e7d865351e98`  
 **Assessor:** Plan E5 — Tag/Package Readiness Review  
-**Status:** Ready for version bump + tag; publish-ready after `files` field and version bump PR merge
+**Status:** Release-prep PR (Plan E6) addresses version bump, `files` whitelist, and README publish path; ready for tag after merge
+
+---
+
+## Release-prep decisions (Plan E6)
+
+| Item | Decision |
+|------|----------|
+| Version | `0.1.0` → `0.2.0` in `package.json` and `package-lock.json` |
+| `files` whitelist | `dist`, `README.md`, `docs/JOURNEY_AUTHORING_TEMPLATE.md` — exports point to built artifacts only; no `src/` or test tooling in tarball |
+| README publish path | Publishing section uses repo-root `npm run build` + `npm publish` (removed stale `cd packages/demo-studio`) |
 
 ---
 
@@ -117,9 +127,9 @@ Evidence:
 
 **Not configured for:** public npmjs.org registry.
 
-**Pre-publish gap:** `package.json` has no `files` field. Without `.npmignore`, `npm publish` will include `src/`, `tests/`, vitest/tsconfig tooling, and other dev artifacts (only `node_modules/` is gitignored). Recommend adding a `files` whitelist (e.g. `dist`, `README.md`, `docs/JOURNEY_AUTHORING_TEMPLATE.md`) in a release-prep PR before first publish.
+**Pre-publish gap (addressed in Plan E6 PR):** `files` whitelist added — `dist`, `README.md`, `docs/JOURNEY_AUTHORING_TEMPLATE.md`. Baseline `npm pack --dry-run` without `files` included 49 files (`src/`, `tests/`, vitest/tsconfig tooling); post-PR dry-run should include only publish artifacts.
 
-**README path stale note:** Publishing section still says `cd packages/demo-studio`; repo is standalone. Fix in release-prep or follow-up doc PR (non-blocking for tag/submodule pin).
+**README publish path (addressed in Plan E6 PR):** Publishing section updated to repo-root commands; workspace-copy section still documents monorepo `packages/demo-studio/` layout for git-copy adopters.
 
 ---
 
@@ -219,9 +229,9 @@ Safe to delete after Leo authorizes; not required for release.
 
 ## Recommended next Plan
 
-**Plan E6 — Release execution** (separate authorization):
+**Plan E7 — Tag and optional publish** (separate authorization):
 
-1. PR: bump to `0.2.0`, add `files` field, fix README publish path
-2. Merge → tag `v0.2.0`
+1. Merge Plan E6 release-prep PR
+2. Tag `v0.2.0`
 3. Optional: `npm publish` to GitHub Packages
-4. **Plan E7** (or kyzmet-ui Plan): submodule bump to `v0.2.0`
+4. **Plan E8** (or kyzmet-ui Plan): submodule bump to `v0.2.0`

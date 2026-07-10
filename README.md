@@ -337,9 +337,8 @@ Keep token names and mapping logic in the downstream application — upstream do
 # One-time: authenticate
 npm login --registry=https://npm.pkg.github.com --scope=@leorami
 
-# Build, then publish
-cd packages/demo-studio
-pnpm build
+# Build, then publish (from the repo root)
+npm run build
 npm publish
 ```
 
