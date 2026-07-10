@@ -1,12 +1,17 @@
 {
   "name": "@leorami/demo-studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Embeddable in-browser demo automation tool — autopilot, screen capture, and admin UI for Preact and React projects.",
   "repository": {
     "type": "git",
     "url": "https://github.com/leorami/demo-studio.git"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "docs/JOURNEY_AUTHORING_TEMPLATE.md"
+  ],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "public"
