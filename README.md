@@ -2,6 +2,8 @@
 
 Embeddable in-browser demo automation: autopilot step runner, screen capture, and a self-contained admin UI for both React and Preact projects.
 
+See [CHANGELOG.md](CHANGELOG.md) for release history.
+
 ## Installing from GitHub Packages
 
 ```sh
@@ -176,16 +178,34 @@ const myJourney: DemoJourney = {
 
 Step kinds: `caption`, `navigate`, `scroll` (`scan` | `read`), `click`, `seed`, `pause`.
 
-Click steps poll until the `testId` is visible. Navigate steps may set `waitForTestId` so autopilot waits for a host-mounted element after routing instead of clicking too early.
+| Step | Targeting |
+|---|---|
+| `click` | Polls until `testId` is present and visible (default wait 12s). Missing targets log a warning and the journey continues. |
+| `navigate` | Optional `waitForTestId` waits for a host-mounted element after routing. |
+| `scroll` | Optional `containerTestId`; otherwise the main scroll container or page. Skips when nothing is scrollable. |
+
+Hosts that call `runAutopilot` directly can set `elementWaitMs`. The same helpers are exported for custom host code:
+
+```ts
+import { waitForTestId } from "@leorami/demo-studio";
+
+await waitForTestId("home-ready", { timeoutMs: 8_000 });
+```
 
 ## Screencast
 
-Screencast uses the browser's native screen-share picker (`getDisplayMedia`) plus `MediaRecorder`. It cannot bypass that permission flow.
+Screencast uses the browser's native screen-share picker (`getDisplayMedia`) plus `MediaRecorder`. It cannot bypass that permission flow. Use Chrome or Edge; embedded browsers without `getDisplayMedia` show Screencast as unavailable.
 
-- **Screencast quality** — Low (720p), Standard (1080p), High (1080p), or Maximum (1440p). This sets bitrate, frame rate, and requested resolution.
-- **Page contents only** — on by default. Prefers capturing this tab (no bookmark, URL, or tab bars) and enters fullscreen after the share picker so window captures also hide browser chrome. Turn it off to allow a full window or display.
+| Quality | Resolution | Frame rate | Typical use |
+|---|---|---|---|
+| `low` | 720p | 24 fps | Quick drafts |
+| `standard` (default) | 1080p | 30 fps | Operator demos |
+| `high` | 1080p | 30 fps | Higher bitrate 1080p |
+| `maximum` | 1440p | 60 fps | High-detail capture |
 
-Use Chrome or Edge. Embedded browsers that do not implement `getDisplayMedia` will show Screencast as unavailable.
+**Page contents only** is on by default. It prefers this tab (no bookmark, URL, or tab bars) and enters fullscreen after the share picker so window captures also hide browser chrome. Turn it off to allow a full window or display.
+
+Both values persist with the other panel settings.
 
 ## Journey authoring metadata
 
@@ -302,6 +322,18 @@ createDemoStudioController({
   defaultSettings,   // Partial<DemoStudioSettings> — override initial values
 })
 ```
+
+### Persisted settings
+
+| Key | Default | Purpose |
+|---|---|---|
+| `journeyId` | first journey | Selected demo |
+| `speed` | `1.5` | Autopilot pace |
+| `fingerEnabled` | `true` | Guided tap overlay |
+| `captionsEnabled` | `true` | Narration pills |
+| `defaultMode` | `"scan"` | Scroll pace (`scan` or `read`) |
+| `screencastQuality` | `"standard"` | Capture bitrate and resolution |
+| `hideBrowserChrome` | `true` | Page-contents-only capture |
 
 ## Theming
 
