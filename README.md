@@ -167,7 +167,7 @@ const myJourney: DemoJourney = {
   estimatedSeconds: 30,
   steps: [
     { kind: "caption", text: "Welcome!", durationMs: 1500 },
-    { kind: "navigate", routeId: "home", label: "Home" },
+    { kind: "navigate", routeId: "home", label: "Home", waitForTestId: "home-ready" },
     { kind: "scroll", mode: "scan" },
     { kind: "click", testId: "my-button", label: "Click the button" },
   ],
@@ -175,6 +175,8 @@ const myJourney: DemoJourney = {
 ```
 
 Step kinds: `caption`, `navigate`, `scroll` (`scan` | `read`), `click`, `seed`, `pause`.
+
+Click steps poll until the `testId` is visible. Navigate steps may set `waitForTestId` so autopilot waits for a host-mounted element after routing instead of clicking too early.
 
 ## Journey authoring metadata
 

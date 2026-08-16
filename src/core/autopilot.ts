@@ -140,7 +140,7 @@ export interface AutopilotOptions {
   seed?: (target: string) => void;
   onEvent: AutopilotEventHandler;
   navigateSettleMs?: number;
-  /** Max wait for click targets and post-navigate warm workplace mount. */
+  /** Max wait for click targets and optional post-navigate test ids. */
   elementWaitMs?: number;
   mainScrollTestId?: string;
 }
@@ -160,6 +160,7 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
   const navigateSettleMs = opts.navigateSettleMs ?? 900;
   const elementWaitMs = opts.elementWaitMs ?? 12_000;
   const visitCounts = new Map<string, number>();
+  const abortController = new AbortController();
 
   let aborted = false;
   let resolveRun!: () => void;
@@ -257,9 +258,11 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
         opts.navigate(step.routeId, step.hashQuery ? { hashQuery: step.hashQuery } : undefined);
         emit({ type: "move", x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight / 2) });
         await sleep(navigateSettleMs);
-        if (step.hashQuery?.includes("workplace=warm")) {
-          await waitForTestId("kyzmet-workplace-app-host", { timeoutMs: elementWaitMs });
-          await sleep(120);
+        if (step.waitForTestId) {
+          await waitForTestId(step.waitForTestId, {
+            timeoutMs: elementWaitMs,
+            signal: abortController.signal,
+          });
         }
         break;
       }
@@ -268,9 +271,14 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
         break;
       }
       case "click": {
-        const el = await waitForTestId(step.testId, { timeoutMs: elementWaitMs });
-        if (!el) {
-          console.warn(`[demo-autopilot] click target not found: ${step.testId}`);
+        const el = await waitForTestId(step.testId, {
+          timeoutMs: elementWaitMs,
+          signal: abortController.signal,
+        });
+        if (!el || aborted) {
+          if (!el && !aborted) {
+            console.warn(`[demo-autopilot] click target not found: ${step.testId}`);
+          }
           break;
         }
         scrollContainerToTestId(step.testId, "instant");
@@ -323,6 +331,9 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
 
   return {
     done,
-    abort() { aborted = true; },
+    abort() {
+      aborted = true;
+      abortController.abort();
+    },
   };
 }

@@ -8,7 +8,7 @@
 export type DemoScrollMode = "scan" | "read";
 
 export type DemoStep =
-  | { kind: "navigate"; routeId: string; label?: string; hashQuery?: string }
+  | { kind: "navigate"; routeId: string; label?: string; hashQuery?: string; waitForTestId?: string }
   | { kind: "scroll"; mode: DemoScrollMode; containerTestId?: string }
   | { kind: "click"; testId: string; label?: string }
   | { kind: "caption"; text: string; durationMs?: number }

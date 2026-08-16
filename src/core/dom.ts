@@ -6,6 +6,7 @@
 export interface WaitForTestIdOptions {
   timeoutMs?: number;
   intervalMs?: number;
+  signal?: AbortSignal;
 }
 
 export function queryTestId(testId: string): HTMLElement | null {
@@ -35,6 +36,7 @@ export async function waitForTestId(
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
+    if (options.signal?.aborted) return null;
     const el = queryTestId(testId);
     if (el && isElementVisible(el)) return el;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
@@ -52,5 +54,5 @@ export function scrollContainerToTestId(
     `[data-testid="${testId}"]`,
   ) as HTMLElement | null;
   if (!el) return;
-  el.scrollIntoView({ behavior, block: "nearest" });
+  el.scrollIntoView?.({ behavior, block: "nearest" });
 }

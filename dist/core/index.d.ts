@@ -10,6 +10,7 @@ type DemoStep = {
     routeId: string;
     label?: string;
     hashQuery?: string;
+    waitForTestId?: string;
 } | {
     kind: "scroll";
     mode: DemoScrollMode;
@@ -120,6 +121,8 @@ interface AutopilotOptions {
     seed?: (target: string) => void;
     onEvent: AutopilotEventHandler;
     navigateSettleMs?: number;
+    /** Max wait for click targets and optional post-navigate test ids. */
+    elementWaitMs?: number;
     mainScrollTestId?: string;
 }
 /** Viewport-height ratio for the reading/caption finger. Keep in sync with `--demo-studio-reading-finger-y`. */
@@ -183,6 +186,15 @@ declare class ScreencastRecorder {
  * DOM helpers — self-contained, no external dependencies.
  * Replaces @kyzmet/os-shell scrollMainScrollContainerToTestId.
  */
+interface WaitForTestIdOptions {
+    timeoutMs?: number;
+    intervalMs?: number;
+    signal?: AbortSignal;
+}
+declare function queryTestId(testId: string): HTMLElement | null;
+declare function isElementVisible(el: HTMLElement): boolean;
+/** Poll until a test id is present and visible, or timeout. */
+declare function waitForTestId(testId: string, options?: WaitForTestIdOptions): Promise<HTMLElement | null>;
 declare function scrollContainerToTestId(testId: string, behavior?: ScrollBehavior): void;
 
 /**
@@ -341,4 +353,4 @@ interface DocHygieneOptions {
  */
 declare function scanDocForBannedContent(content: string, options?: DocHygieneOptions): DocHygieneViolation[];
 
-export { type AutopilotEvent, type AutopilotEventHandler, type AutopilotNavigateOptions, type AutopilotOptions, type AutopilotRun, DEFAULT_DEMO_PACING, DEMO_SPEED_DEFAULT, DEMO_SPEED_MAX, DEMO_SPEED_MIN, type DemoJourney, type DemoPacing, type DemoPacingConfig, type DemoScrollMode, type DemoStep, type DemoStudioActions, type DemoStudioAdapters, type DemoStudioController, type DemoStudioOptions, type DemoStudioSettings, type DemoStudioState, type DocHygieneOptions, type DocHygieneViolation, type JourneyAuthoringAudience, type JourneyAuthoringCategory, type JourneyAuthoringEntry, type JourneyIdSource, type JourneyOwnership, type JourneyPrivacyClassification, type JourneyResetReplayExpectation, type JourneyTestGuidance, type ManifestIdEntry, type ParsedRefinement, READING_FINGER_Y_RATIO, type RecorderState, type RunStatus, ScreencastRecorder, type ScreencastRecorderOptions, assertManifestMatchesJourneys, buildDemoPacing, createDemoStudioController, familiarityFactor, findJourneyById, isScreencastSupported, jitter, parseRefinement, readingTimeMs, runAutopilot, scanDocForBannedContent, scrollContainerToTestId };
+export { type AutopilotEvent, type AutopilotEventHandler, type AutopilotNavigateOptions, type AutopilotOptions, type AutopilotRun, DEFAULT_DEMO_PACING, DEMO_SPEED_DEFAULT, DEMO_SPEED_MAX, DEMO_SPEED_MIN, type DemoJourney, type DemoPacing, type DemoPacingConfig, type DemoScrollMode, type DemoStep, type DemoStudioActions, type DemoStudioAdapters, type DemoStudioController, type DemoStudioOptions, type DemoStudioSettings, type DemoStudioState, type DocHygieneOptions, type DocHygieneViolation, type JourneyAuthoringAudience, type JourneyAuthoringCategory, type JourneyAuthoringEntry, type JourneyIdSource, type JourneyOwnership, type JourneyPrivacyClassification, type JourneyResetReplayExpectation, type JourneyTestGuidance, type ManifestIdEntry, type ParsedRefinement, READING_FINGER_Y_RATIO, type RecorderState, type RunStatus, ScreencastRecorder, type ScreencastRecorderOptions, type WaitForTestIdOptions, assertManifestMatchesJourneys, buildDemoPacing, createDemoStudioController, familiarityFactor, findJourneyById, isElementVisible, isScreencastSupported, jitter, parseRefinement, queryTestId, readingTimeMs, runAutopilot, scanDocForBannedContent, scrollContainerToTestId, waitForTestId };
