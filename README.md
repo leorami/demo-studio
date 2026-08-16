@@ -313,6 +313,8 @@ Import `@leorami/demo-studio/styles.css` and override CSS variables in `:root` (
 }
 ```
 
+Narration pills sit just below the reading finger (`--demo-studio-reading-finger-y`) and clamp inside the viewport so they do not collide with the launcher.
+
 Full variable list: see `src/styles/demo-studio.css`.
 
 Downstream hosts can map Demo Studio variables to existing **host theme tokens** so the panel matches the surrounding application chrome:

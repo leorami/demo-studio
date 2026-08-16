@@ -122,6 +122,8 @@ interface AutopilotOptions {
     navigateSettleMs?: number;
     mainScrollTestId?: string;
 }
+/** Viewport-height ratio for the reading/caption finger. Keep in sync with `--demo-studio-reading-finger-y`. */
+declare const READING_FINGER_Y_RATIO = 0.62;
 declare function runAutopilot(opts: AutopilotOptions): AutopilotRun;
 
 /**
@@ -339,4 +341,4 @@ interface DocHygieneOptions {
  */
 declare function scanDocForBannedContent(content: string, options?: DocHygieneOptions): DocHygieneViolation[];
 
-export { type AutopilotEvent, type AutopilotEventHandler, type AutopilotNavigateOptions, type AutopilotOptions, type AutopilotRun, DEFAULT_DEMO_PACING, DEMO_SPEED_DEFAULT, DEMO_SPEED_MAX, DEMO_SPEED_MIN, type DemoJourney, type DemoPacing, type DemoPacingConfig, type DemoScrollMode, type DemoStep, type DemoStudioActions, type DemoStudioAdapters, type DemoStudioController, type DemoStudioOptions, type DemoStudioSettings, type DemoStudioState, type DocHygieneOptions, type DocHygieneViolation, type JourneyAuthoringAudience, type JourneyAuthoringCategory, type JourneyAuthoringEntry, type JourneyIdSource, type JourneyOwnership, type JourneyPrivacyClassification, type JourneyResetReplayExpectation, type JourneyTestGuidance, type ManifestIdEntry, type ParsedRefinement, type RecorderState, type RunStatus, ScreencastRecorder, type ScreencastRecorderOptions, assertManifestMatchesJourneys, buildDemoPacing, createDemoStudioController, familiarityFactor, findJourneyById, isScreencastSupported, jitter, parseRefinement, readingTimeMs, runAutopilot, scanDocForBannedContent, scrollContainerToTestId };
+export { type AutopilotEvent, type AutopilotEventHandler, type AutopilotNavigateOptions, type AutopilotOptions, type AutopilotRun, DEFAULT_DEMO_PACING, DEMO_SPEED_DEFAULT, DEMO_SPEED_MAX, DEMO_SPEED_MIN, type DemoJourney, type DemoPacing, type DemoPacingConfig, type DemoScrollMode, type DemoStep, type DemoStudioActions, type DemoStudioAdapters, type DemoStudioController, type DemoStudioOptions, type DemoStudioSettings, type DemoStudioState, type DocHygieneOptions, type DocHygieneViolation, type JourneyAuthoringAudience, type JourneyAuthoringCategory, type JourneyAuthoringEntry, type JourneyIdSource, type JourneyOwnership, type JourneyPrivacyClassification, type JourneyResetReplayExpectation, type JourneyTestGuidance, type ManifestIdEntry, type ParsedRefinement, READING_FINGER_Y_RATIO, type RecorderState, type RunStatus, ScreencastRecorder, type ScreencastRecorderOptions, assertManifestMatchesJourneys, buildDemoPacing, createDemoStudioController, familiarityFactor, findJourneyById, isScreencastSupported, jitter, parseRefinement, readingTimeMs, runAutopilot, scanDocForBannedContent, scrollContainerToTestId };

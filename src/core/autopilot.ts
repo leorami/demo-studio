@@ -133,10 +133,13 @@ export interface AutopilotOptions {
   mainScrollTestId?: string;
 }
 
+/** Viewport-height ratio for the reading/caption finger. Keep in sync with `--demo-studio-reading-finger-y`. */
+export const READING_FINGER_Y_RATIO = 0.62;
+
 function readingFingerPosition(): { x: number; y: number } {
   return {
     x: Math.round(window.innerWidth * 0.55),
-    y: Math.round(window.innerHeight * 0.62),
+    y: Math.round(window.innerHeight * READING_FINGER_Y_RATIO),
   };
 }
 
