@@ -10,6 +10,8 @@
   --demo-studio-fab-gap: 0.5rem;
   --demo-studio-fab-icon-size: 1.5rem;
   --demo-studio-stack-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  --demo-studio-reading-finger-y: 62vh;
+  --demo-studio-finger-size: 1.75rem;
   --demo-studio-panel-ink: var(--demo-studio-fg);
   --demo-studio-panel-ink-medium: rgb(219 234 254 / 0.86);
   --demo-studio-panel-ink-muted: rgb(219 234 254 / 0.68);
@@ -500,8 +502,8 @@
 }
 .demo-studio-finger-dot {
   position: absolute;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: var(--demo-studio-finger-size);
+  height: var(--demo-studio-finger-size);
   border-radius: 9999px;
   background: rgb(30 58 138 / 0.85);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -540,15 +542,18 @@
 .demo-studio-caption-container {
   pointer-events: none;
   position: fixed;
-  inset-inline: 0;
-  bottom: 2.5rem;
+  inset-inline: max(1rem, env(safe-area-inset-left, 0px)) max(1rem, env(safe-area-inset-right, 0px));
+  top: min(calc(var(--demo-studio-reading-finger-y) + var(--demo-studio-finger-size) + 0.5rem), calc(100dvh - 8.5rem));
+  bottom: auto;
   z-index: 10000;
   display: flex;
   justify-content: center;
-  padding: 0 1rem;
+  padding: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .demo-studio-caption {
-  max-width: 28rem;
+  max-width: min(28rem, 100%);
   border-radius: 0.75rem;
   border: 1px solid rgb(30 58 138 / 0.25);
   background: var(--demo-studio-bg);

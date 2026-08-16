@@ -128,10 +128,11 @@ function centreOf(el) {
   const r = el.getBoundingClientRect();
   return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
 }
+var READING_FINGER_Y_RATIO = 0.62;
 function readingFingerPosition() {
   return {
     x: Math.round(window.innerWidth * 0.55),
-    y: Math.round(window.innerHeight * 0.62)
+    y: Math.round(window.innerHeight * READING_FINGER_Y_RATIO)
   };
 }
 function runAutopilot(opts) {
@@ -819,6 +820,7 @@ export {
   DEMO_SPEED_DEFAULT,
   DEMO_SPEED_MAX,
   DEMO_SPEED_MIN,
+  READING_FINGER_Y_RATIO,
   ScreencastRecorder,
   assertManifestMatchesJourneys,
   buildDemoPacing,
