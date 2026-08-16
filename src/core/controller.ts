@@ -12,6 +12,8 @@
 import { runAutopilot } from "./autopilot.js";
 import { findJourneyById, parseRefinement } from "./command-parser.js";
 import { buildDemoPacing, DEMO_SPEED_DEFAULT, DEMO_SPEED_MAX, DEMO_SPEED_MIN } from "./pacing.js";
+import { resolveScreencastQuality } from "./screencast-quality.js";
+import type { ScreencastQuality } from "./screencast-quality.js";
 import { isScreencastSupported, ScreencastRecorder } from "./screencast-recorder.js";
 import type { DemoPacing } from "./pacing.js";
 import type {
@@ -33,6 +35,8 @@ export interface DemoStudioSettings {
   fingerEnabled: boolean;
   captionsEnabled: boolean;
   defaultMode: "scan" | "read";
+  screencastQuality: ScreencastQuality;
+  hideBrowserChrome: boolean;
 }
 
 function defaultSettings(journeys: DemoJourney[]): DemoStudioSettings {
@@ -42,6 +46,8 @@ function defaultSettings(journeys: DemoJourney[]): DemoStudioSettings {
     fingerEnabled: true,
     captionsEnabled: true,
     defaultMode: "scan",
+    screencastQuality: "standard",
+    hideBrowserChrome: true,
   };
 }
 
@@ -49,7 +55,10 @@ function loadSettings(storageKey: string, journeys: DemoJourney[]): DemoStudioSe
   try {
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return defaultSettings(journeys);
-    return { ...defaultSettings(journeys), ...JSON.parse(raw) };
+    const parsed = { ...defaultSettings(journeys), ...JSON.parse(raw) } as DemoStudioSettings;
+    parsed.screencastQuality = resolveScreencastQuality(parsed.screencastQuality);
+    parsed.hideBrowserChrome = parsed.hideBrowserChrome !== false;
+    return parsed;
   } catch { return defaultSettings(journeys); }
 }
 
@@ -247,6 +256,8 @@ export function createDemoStudioController(opts: DemoStudioOptions): DemoStudioC
 
       const recorder = new ScreencastRecorder({
         filename: `demo-${state.settings.journeyId}`,
+        quality: state.settings.screencastQuality,
+        hideBrowserChrome: state.settings.hideBrowserChrome,
         onStateChange: (recorderState) => setState({ recorderState }),
         onError: (err) => {
           setState({ errorMsg: err.message, runStatus: "idle", running: false, recording: false });

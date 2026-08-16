@@ -178,6 +178,15 @@ Step kinds: `caption`, `navigate`, `scroll` (`scan` | `read`), `click`, `seed`, 
 
 Click steps poll until the `testId` is visible. Navigate steps may set `waitForTestId` so autopilot waits for a host-mounted element after routing instead of clicking too early.
 
+## Screencast
+
+Screencast uses the browser's native screen-share picker (`getDisplayMedia`) plus `MediaRecorder`. It cannot bypass that permission flow.
+
+- **Screencast quality** — Low (720p), Standard (1080p), High (1080p), or Maximum (1440p). This sets bitrate, frame rate, and requested resolution.
+- **Page contents only** — on by default. Prefers capturing this tab (no bookmark, URL, or tab bars) and enters fullscreen after the share picker so window captures also hide browser chrome. Turn it off to allow a full window or display.
+
+Use Chrome or Edge. Embedded browsers that do not implement `getDisplayMedia` will show Screencast as unavailable.
+
 ## Journey authoring metadata
 
 Downstream hosts can attach product-agnostic authoring metadata to journeys for documentation, privacy review, and test selection:

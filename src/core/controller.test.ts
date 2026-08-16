@@ -65,6 +65,8 @@ describe("settings persistence", () => {
     const { settings } = ctrl.getState();
     expect(settings.speed).toBeGreaterThan(0);
     expect(settings.fingerEnabled).toBe(true);
+    expect(settings.screencastQuality).toBe("standard");
+    expect(settings.hideBrowserChrome).toBe(true);
     ctrl.destroy();
   });
 
@@ -78,6 +80,26 @@ describe("settings persistence", () => {
     const stored = JSON.parse(localStorage.getItem(TEST_STORAGE_KEY) ?? "{}");
     expect(stored.speed).toBe(2.5);
     ctrl.destroy();
+  });
+
+  it("persists screencast quality and page-contents-only capture", () => {
+    const ctrl = createDemoStudioController({
+      journeys: [JOURNEY_A],
+      ...makeAdapters(),
+      storageKey: TEST_STORAGE_KEY,
+    });
+    ctrl.actions.setSetting("screencastQuality", "high");
+    ctrl.actions.setSetting("hideBrowserChrome", false);
+    ctrl.destroy();
+
+    const ctrl2 = createDemoStudioController({
+      journeys: [JOURNEY_A],
+      ...makeAdapters(),
+      storageKey: TEST_STORAGE_KEY,
+    });
+    expect(ctrl2.getState().settings.screencastQuality).toBe("high");
+    expect(ctrl2.getState().settings.hideBrowserChrome).toBe(false);
+    ctrl2.destroy();
   });
 
   it("reloads persisted speed on next controller creation", () => {

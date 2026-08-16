@@ -1,6 +1,8 @@
 /** @jsxImportSource preact */
 
 import { isScreencastSupported } from "../core/screencast-recorder.js";
+import { SCREENCAST_QUALITIES, SCREENCAST_QUALITY_PRESETS } from "../core/screencast-quality.js";
+import type { ScreencastQuality } from "../core/screencast-quality.js";
 import { DEMO_SPEED_MAX, DEMO_SPEED_MIN } from "../core/pacing.js";
 import type { DemoStudioController } from "../core/controller.js";
 import { ClapperboardIcon, CloseIcon } from "./icons.js";
@@ -75,10 +77,26 @@ export function DemoStudioPanel({ controller }: DemoStudioPanelProps) {
               />
             </div>
 
+            <div class="demo-studio-field-group">
+              <label for="demo-studio-quality" class="demo-studio-field-label">Screencast quality</label>
+              <select
+                id="demo-studio-quality"
+                class="demo-studio-select"
+                value={settings.screencastQuality}
+                onChange={(e) => actions.setSetting("screencastQuality", (e.target as HTMLSelectElement).value as ScreencastQuality)}
+                data-testid="kyzmet-demo-studio-quality"
+              >
+                {SCREENCAST_QUALITIES.map((quality) => (
+                  <option key={quality} value={quality}>{SCREENCAST_QUALITY_PRESETS[quality].label}</option>
+                ))}
+              </select>
+            </div>
+
             <div class="demo-studio-settings-inset">
               <ToggleRow id="demo-studio-finger" label="Finger overlay" description="Show the guided tap dot during the demo." checked={settings.fingerEnabled} onChange={(v) => actions.setSetting("fingerEnabled", v)} testId="kyzmet-demo-studio-finger-toggle" />
               <ToggleRow id="demo-studio-captions" label="Captions" description="Show narration pills during caption steps." checked={settings.captionsEnabled} onChange={(v) => actions.setSetting("captionsEnabled", v)} testId="kyzmet-demo-studio-captions-toggle" />
               <ToggleRow id="demo-studio-default-mode" label="Read scroll mode" description="On: linger and read each page. Off: skim-scan pace." checked={settings.defaultMode === "read"} onChange={(readMode) => actions.setSetting("defaultMode", readMode ? "read" : "scan")} testId="kyzmet-demo-studio-default-mode" />
+              <ToggleRow id="demo-studio-hide-chrome" label="Page contents only" description="Hide bookmark, URL, and tab bars. Choose this tab in the browser share picker." checked={settings.hideBrowserChrome} onChange={(v) => actions.setSetting("hideBrowserChrome", v)} testId="kyzmet-demo-studio-hide-chrome" />
             </div>
 
             {stepLabel && <p class="demo-studio-status">→ {stepLabel}</p>}

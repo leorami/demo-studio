@@ -152,15 +152,30 @@ interface ParsedRefinement {
 declare function parseRefinement(journey: DemoJourney, refinementText: string): ParsedRefinement;
 declare function findJourneyById(journeys: DemoJourney[], id: string): DemoJourney | undefined;
 
+declare const SCREENCAST_QUALITIES: readonly ["low", "standard", "high", "maximum"];
+type ScreencastQuality = (typeof SCREENCAST_QUALITIES)[number];
+type ScreencastQualityPreset = {
+    label: string;
+    videoBitsPerSecond: number;
+    frameRate: number;
+    width: number;
+    height: number;
+};
+declare const SCREENCAST_QUALITY_PRESETS: Record<ScreencastQuality, ScreencastQualityPreset>;
+declare function resolveScreencastQuality(value: string | undefined): ScreencastQuality;
+
 /**
  * ScreencastRecorder — capture the browser tab as a downloadable .webm.
  *
  * Uses MediaDevices.getDisplayMedia() + MediaRecorder.
  * The user sees the browser's native share-picker (browser security requirement).
  */
+
 type RecorderState = "idle" | "requesting" | "recording" | "stopping" | "done" | "error";
 interface ScreencastRecorderOptions {
     filename?: string;
+    quality?: ScreencastQuality;
+    hideBrowserChrome?: boolean;
     videoBitsPerSecond?: number;
     onStateChange?: (state: RecorderState) => void;
     onError?: (error: Error) => void;
@@ -172,6 +187,7 @@ declare class ScreencastRecorder {
     private mediaRecorder;
     private chunks;
     private _state;
+    private enteredFullscreen;
     constructor(options?: ScreencastRecorderOptions);
     get state(): RecorderState;
     get isRecording(): boolean;
@@ -214,6 +230,8 @@ interface DemoStudioSettings {
     fingerEnabled: boolean;
     captionsEnabled: boolean;
     defaultMode: "scan" | "read";
+    screencastQuality: ScreencastQuality;
+    hideBrowserChrome: boolean;
 }
 type RunStatus = "idle" | "running" | "done" | "aborted" | "recording-start" | "recording";
 interface DemoStudioState {
@@ -353,4 +371,4 @@ interface DocHygieneOptions {
  */
 declare function scanDocForBannedContent(content: string, options?: DocHygieneOptions): DocHygieneViolation[];
 
-export { type AutopilotEvent, type AutopilotEventHandler, type AutopilotNavigateOptions, type AutopilotOptions, type AutopilotRun, DEFAULT_DEMO_PACING, DEMO_SPEED_DEFAULT, DEMO_SPEED_MAX, DEMO_SPEED_MIN, type DemoJourney, type DemoPacing, type DemoPacingConfig, type DemoScrollMode, type DemoStep, type DemoStudioActions, type DemoStudioAdapters, type DemoStudioController, type DemoStudioOptions, type DemoStudioSettings, type DemoStudioState, type DocHygieneOptions, type DocHygieneViolation, type JourneyAuthoringAudience, type JourneyAuthoringCategory, type JourneyAuthoringEntry, type JourneyIdSource, type JourneyOwnership, type JourneyPrivacyClassification, type JourneyResetReplayExpectation, type JourneyTestGuidance, type ManifestIdEntry, type ParsedRefinement, READING_FINGER_Y_RATIO, type RecorderState, type RunStatus, ScreencastRecorder, type ScreencastRecorderOptions, type WaitForTestIdOptions, assertManifestMatchesJourneys, buildDemoPacing, createDemoStudioController, familiarityFactor, findJourneyById, isElementVisible, isScreencastSupported, jitter, parseRefinement, queryTestId, readingTimeMs, runAutopilot, scanDocForBannedContent, scrollContainerToTestId, waitForTestId };
+export { type AutopilotEvent, type AutopilotEventHandler, type AutopilotNavigateOptions, type AutopilotOptions, type AutopilotRun, DEFAULT_DEMO_PACING, DEMO_SPEED_DEFAULT, DEMO_SPEED_MAX, DEMO_SPEED_MIN, type DemoJourney, type DemoPacing, type DemoPacingConfig, type DemoScrollMode, type DemoStep, type DemoStudioActions, type DemoStudioAdapters, type DemoStudioController, type DemoStudioOptions, type DemoStudioSettings, type DemoStudioState, type DocHygieneOptions, type DocHygieneViolation, type JourneyAuthoringAudience, type JourneyAuthoringCategory, type JourneyAuthoringEntry, type JourneyIdSource, type JourneyOwnership, type JourneyPrivacyClassification, type JourneyResetReplayExpectation, type JourneyTestGuidance, type ManifestIdEntry, type ParsedRefinement, READING_FINGER_Y_RATIO, type RecorderState, type RunStatus, SCREENCAST_QUALITIES, SCREENCAST_QUALITY_PRESETS, type ScreencastQuality, type ScreencastQualityPreset, ScreencastRecorder, type ScreencastRecorderOptions, type WaitForTestIdOptions, assertManifestMatchesJourneys, buildDemoPacing, createDemoStudioController, familiarityFactor, findJourneyById, isElementVisible, isScreencastSupported, jitter, parseRefinement, queryTestId, readingTimeMs, resolveScreencastQuality, runAutopilot, scanDocForBannedContent, scrollContainerToTestId, waitForTestId };

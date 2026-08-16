@@ -1,5 +1,8 @@
 import * as react from 'react';
 
+declare const SCREENCAST_QUALITIES: readonly ["low", "standard", "high", "maximum"];
+type ScreencastQuality = (typeof SCREENCAST_QUALITIES)[number];
+
 /**
  * Core types for @leorami/demo-studio.
  *
@@ -81,6 +84,7 @@ interface DemoStudioAdapters {
  * Uses MediaDevices.getDisplayMedia() + MediaRecorder.
  * The user sees the browser's native share-picker (browser security requirement).
  */
+
 type RecorderState = "idle" | "requesting" | "recording" | "stopping" | "done" | "error";
 
 /**
@@ -100,6 +104,8 @@ interface DemoStudioSettings {
     fingerEnabled: boolean;
     captionsEnabled: boolean;
     defaultMode: "scan" | "read";
+    screencastQuality: ScreencastQuality;
+    hideBrowserChrome: boolean;
 }
 type RunStatus = "idle" | "running" | "done" | "aborted" | "recording-start" | "recording";
 interface DemoStudioState {
