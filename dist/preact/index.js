@@ -2,12 +2,39 @@
 import { useEffect, useReducer, useRef } from "preact/hooks";
 
 // src/core/dom.ts
+function queryTestId(testId) {
+  return document.querySelector(
+    `[data-testid="${testId}"]`
+  );
+}
+function isElementVisible(el) {
+  if (!el.isConnected) return false;
+  const style = getComputedStyle(el);
+  if (style.visibility === "hidden" || style.display === "none") return false;
+  if (el.getAttribute("aria-hidden") === "true") return false;
+  const rect = el.getBoundingClientRect();
+  if (rect.width > 0 && rect.height > 0) return true;
+  return el.matches("button, a, input, select, textarea, [role='button']");
+}
+async function waitForTestId(testId, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 1e4;
+  const intervalMs = options.intervalMs ?? 50;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (options.signal?.aborted) return null;
+    const el = queryTestId(testId);
+    if (el && isElementVisible(el)) return el;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  const last = queryTestId(testId);
+  return last && isElementVisible(last) ? last : null;
+}
 function scrollContainerToTestId(testId, behavior = "smooth") {
   const el = document.querySelector(
     `[data-testid="${testId}"]`
   );
   if (!el) return;
-  el.scrollIntoView({ behavior, block: "nearest" });
+  el.scrollIntoView?.({ behavior, block: "nearest" });
 }
 
 // src/core/pacing.ts
@@ -73,12 +100,21 @@ function detectScrollContainer(containerTestId, mainScrollTestId) {
       container: el
     };
   };
-  const primaryTestId = containerTestId ?? mainScrollTestId;
-  if (primaryTestId) {
-    const primary = tryContainer(
-      document.querySelector(`[data-testid="${primaryTestId}"]`)
+  if (containerTestId) {
+    const explicit = document.querySelector(
+      `[data-testid="${containerTestId}"]`
     );
-    if (primary) return primary;
+    if (!explicit) {
+      return { scrollable: 0, fullText: "", container: null };
+    }
+    const scoped = tryContainer(explicit);
+    if (scoped) return scoped;
+  }
+  if (mainScrollTestId) {
+    const main = tryContainer(
+      document.querySelector(`[data-testid="${mainScrollTestId}"]`)
+    );
+    if (main) return main;
   }
   const winScrollable = document.documentElement.scrollHeight - window.innerHeight;
   if (winScrollable > 10) {
@@ -141,7 +177,9 @@ function readingFingerPosition() {
 function runAutopilot(opts) {
   const pacing = opts.pacing ?? buildDemoPacing(1.5);
   const navigateSettleMs = opts.navigateSettleMs ?? 900;
+  const elementWaitMs = opts.elementWaitMs ?? 12e3;
   const visitCounts = /* @__PURE__ */ new Map();
+  const abortController = new AbortController();
   let aborted = false;
   let resolveRun;
   const done = new Promise((res) => {
@@ -167,6 +205,10 @@ function runAutopilot(opts) {
       containerTestId,
       opts.mainScrollTestId
     );
+    if (scrollable <= 0) {
+      await sleep(Math.min(pacing.minPageDwell, 350));
+      return;
+    }
     const finger = readingFingerPosition();
     emit({ type: "move", x: finger.x, y: finger.y });
     const route = routeKey();
@@ -222,6 +264,12 @@ function runAutopilot(opts) {
         opts.navigate(step.routeId, step.hashQuery ? { hashQuery: step.hashQuery } : void 0);
         emit({ type: "move", x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight / 2) });
         await sleep(navigateSettleMs);
+        if (step.waitForTestId) {
+          await waitForTestId(step.waitForTestId, {
+            timeoutMs: elementWaitMs,
+            signal: abortController.signal
+          });
+        }
         break;
       }
       case "scroll": {
@@ -229,17 +277,24 @@ function runAutopilot(opts) {
         break;
       }
       case "click": {
-        const el = document.querySelector(`[data-testid="${step.testId}"]`);
-        if (el) {
-          scrollContainerToTestId(step.testId, "instant");
-          await sleep(160 + jitter(80));
-          const { x, y } = centreOf(el);
-          emit({ type: "move", x, y });
-          await sleep(220 + jitter(120));
-          emit({ type: "click", x, y, testId: step.testId });
-          el.click();
-          await sleep(navigateSettleMs);
+        const el = await waitForTestId(step.testId, {
+          timeoutMs: elementWaitMs,
+          signal: abortController.signal
+        });
+        if (!el || aborted) {
+          if (!el && !aborted) {
+            console.warn(`[demo-autopilot] click target not found: ${step.testId}`);
+          }
+          break;
         }
+        scrollContainerToTestId(step.testId, "instant");
+        await sleep(160 + jitter(80));
+        const { x, y } = centreOf(el);
+        emit({ type: "move", x, y });
+        await sleep(220 + jitter(120));
+        emit({ type: "click", x, y, testId: step.testId });
+        el.click();
+        await sleep(navigateSettleMs);
         break;
       }
       case "seed": {
@@ -281,6 +336,7 @@ function runAutopilot(opts) {
     done,
     abort() {
       aborted = true;
+      abortController.abort();
     }
   };
 }

@@ -38,7 +38,13 @@ export type { ParsedRefinement } from "./command-parser.js";
 export { ScreencastRecorder, isScreencastSupported } from "./screencast-recorder.js";
 export type { ScreencastRecorderOptions, RecorderState } from "./screencast-recorder.js";
 
-export { scrollContainerToTestId } from "./dom.js";
+export {
+  scrollContainerToTestId,
+  waitForTestId,
+  queryTestId,
+  isElementVisible,
+} from "./dom.js";
+export type { WaitForTestIdOptions } from "./dom.js";
 
 export { createDemoStudioController } from "./controller.js";
 export type {

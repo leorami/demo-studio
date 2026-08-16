@@ -12,6 +12,7 @@ type DemoStep = {
     routeId: string;
     label?: string;
     hashQuery?: string;
+    waitForTestId?: string;
 } | {
     kind: "scroll";
     mode: DemoScrollMode;

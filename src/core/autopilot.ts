@@ -5,7 +5,7 @@
  * module has no dependency on any host router or route-key type.
  */
 
-import { scrollContainerToTestId } from "./dom.js";
+import { scrollContainerToTestId, waitForTestId } from "./dom.js";
 import {
   buildDemoPacing,
   familiarityFactor,
@@ -52,12 +52,22 @@ function detectScrollContainer(
     };
   };
 
-  const primaryTestId = containerTestId ?? mainScrollTestId;
-  if (primaryTestId) {
-    const primary = tryContainer(
-      document.querySelector(`[data-testid="${primaryTestId}"]`) as HTMLElement | null,
+  if (containerTestId) {
+    const explicit = document.querySelector(
+      `[data-testid="${containerTestId}"]`,
+    ) as HTMLElement | null;
+    if (!explicit) {
+      return { scrollable: 0, fullText: "", container: null };
+    }
+    const scoped = tryContainer(explicit);
+    if (scoped) return scoped;
+  }
+
+  if (mainScrollTestId) {
+    const main = tryContainer(
+      document.querySelector(`[data-testid="${mainScrollTestId}"]`) as HTMLElement | null,
     );
-    if (primary) return primary;
+    if (main) return main;
   }
 
   const winScrollable = document.documentElement.scrollHeight - window.innerHeight;
@@ -130,6 +140,8 @@ export interface AutopilotOptions {
   seed?: (target: string) => void;
   onEvent: AutopilotEventHandler;
   navigateSettleMs?: number;
+  /** Max wait for click targets and optional post-navigate test ids. */
+  elementWaitMs?: number;
   mainScrollTestId?: string;
 }
 
@@ -146,7 +158,9 @@ function readingFingerPosition(): { x: number; y: number } {
 export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
   const pacing = opts.pacing ?? buildDemoPacing(1.5);
   const navigateSettleMs = opts.navigateSettleMs ?? 900;
+  const elementWaitMs = opts.elementWaitMs ?? 12_000;
   const visitCounts = new Map<string, number>();
+  const abortController = new AbortController();
 
   let aborted = false;
   let resolveRun!: () => void;
@@ -170,6 +184,10 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
     const { scrollable, fullText, container } = detectScrollContainer(
       containerTestId, opts.mainScrollTestId,
     );
+    if (scrollable <= 0) {
+      await sleep(Math.min(pacing.minPageDwell, 350));
+      return;
+    }
     const finger = readingFingerPosition();
     emit({ type: "move", x: finger.x, y: finger.y });
 
@@ -240,6 +258,12 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
         opts.navigate(step.routeId, step.hashQuery ? { hashQuery: step.hashQuery } : undefined);
         emit({ type: "move", x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight / 2) });
         await sleep(navigateSettleMs);
+        if (step.waitForTestId) {
+          await waitForTestId(step.waitForTestId, {
+            timeoutMs: elementWaitMs,
+            signal: abortController.signal,
+          });
+        }
         break;
       }
       case "scroll": {
@@ -247,17 +271,24 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
         break;
       }
       case "click": {
-        const el = document.querySelector(`[data-testid="${step.testId}"]`) as HTMLElement | null;
-        if (el) {
-          scrollContainerToTestId(step.testId, "instant");
-          await sleep(160 + jitter(80));
-          const { x, y } = centreOf(el);
-          emit({ type: "move", x, y });
-          await sleep(220 + jitter(120));
-          emit({ type: "click", x, y, testId: step.testId });
-          el.click();
-          await sleep(navigateSettleMs);
+        const el = await waitForTestId(step.testId, {
+          timeoutMs: elementWaitMs,
+          signal: abortController.signal,
+        });
+        if (!el || aborted) {
+          if (!el && !aborted) {
+            console.warn(`[demo-autopilot] click target not found: ${step.testId}`);
+          }
+          break;
         }
+        scrollContainerToTestId(step.testId, "instant");
+        await sleep(160 + jitter(80));
+        const { x, y } = centreOf(el);
+        emit({ type: "move", x, y });
+        await sleep(220 + jitter(120));
+        emit({ type: "click", x, y, testId: step.testId });
+        el.click();
+        await sleep(navigateSettleMs);
         break;
       }
       case "seed": {
@@ -300,6 +331,9 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
 
   return {
     done,
-    abort() { aborted = true; },
+    abort() {
+      aborted = true;
+      abortController.abort();
+    },
   };
 }
