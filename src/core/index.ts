@@ -29,7 +29,7 @@ export {
 } from "./pacing.js";
 export type { DemoPacing, DemoPacingConfig } from "./pacing.js";
 
-export { runAutopilot } from "./autopilot.js";
+export { runAutopilot, READING_FINGER_Y_RATIO } from "./autopilot.js";
 export type { AutopilotOptions } from "./autopilot.js";
 
 export { parseRefinement, findJourneyById } from "./command-parser.js";
@@ -49,3 +49,24 @@ export type {
   DemoStudioOptions,
   RunStatus,
 } from "./controller.js";
+
+export type {
+  JourneyAuthoringAudience,
+  JourneyAuthoringCategory,
+  JourneyAuthoringEntry,
+  JourneyOwnership,
+  JourneyPrivacyClassification,
+  JourneyResetReplayExpectation,
+  JourneyTestGuidance,
+} from "./authoring-types.js";
+
+export {
+  assertManifestMatchesJourneys,
+  scanDocForBannedContent,
+} from "./authoring-exports.js";
+export type {
+  JourneyIdSource,
+  ManifestIdEntry,
+  DocHygieneOptions,
+  DocHygieneViolation,
+} from "./authoring-exports.js";
