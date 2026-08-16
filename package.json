@@ -1,6 +1,6 @@
 {
   "name": "@leorami/demo-studio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Embeddable in-browser demo automation tool — autopilot, screen capture, and admin UI for Preact and React projects.",
   "repository": {
@@ -10,6 +10,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "docs/JOURNEY_AUTHORING_TEMPLATE.md"
   ],
   "publishConfig": {
@@ -43,9 +44,15 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "peerDependenciesMeta": {
-    "preact": { "optional": true },
-    "react": { "optional": true },
-    "react-dom": { "optional": true }
+    "preact": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/react": "^18.3.0",
