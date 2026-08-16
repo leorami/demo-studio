@@ -5,10 +5,18 @@
  * The user sees the browser's native share-picker (browser security requirement).
  */
 
+import {
+  resolveScreencastQuality,
+  SCREENCAST_QUALITY_PRESETS,
+  type ScreencastQuality,
+} from "./screencast-quality.js";
+
 export type RecorderState = "idle" | "requesting" | "recording" | "stopping" | "done" | "error";
 
 export interface ScreencastRecorderOptions {
   filename?: string;
+  quality?: ScreencastQuality;
+  hideBrowserChrome?: boolean;
   videoBitsPerSecond?: number;
   onStateChange?: (state: RecorderState) => void;
   onError?: (error: Error) => void;
@@ -29,6 +37,7 @@ export class ScreencastRecorder {
   private mediaRecorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private _state: RecorderState = "idle";
+  private enteredFullscreen = false;
 
   constructor(options: ScreencastRecorderOptions = {}) {
     this.options = options;
@@ -56,15 +65,29 @@ export class ScreencastRecorder {
 
     this.setState("requesting");
     this.chunks = [];
+    this.enteredFullscreen = false;
+
+    const quality = resolveScreencastQuality(this.options.quality);
+    const preset = SCREENCAST_QUALITY_PRESETS[quality];
+    const hideBrowserChrome = this.options.hideBrowserChrome !== false;
 
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 30 },
+        video: {
+          frameRate: preset.frameRate,
+          width: { ideal: preset.width },
+          height: { ideal: preset.height },
+          ...(hideBrowserChrome ? { displaySurface: "browser" } : {}),
+        },
         audio: false,
-        // @ts-expect-error — Chrome-specific hint
-        preferCurrentTab: true,
-      });
+        // Chrome-specific capture hints. Tab capture excludes bookmark / URL / tab bars.
+        preferCurrentTab: hideBrowserChrome,
+        selfBrowserSurface: "include",
+        systemAudio: "exclude",
+        monitorTypeSurfaces: hideBrowserChrome ? "exclude" : "include",
+        surfaceSwitching: hideBrowserChrome ? "exclude" : "include",
+      } as DisplayMediaStreamOptions);
     } catch (err) {
       this.setState("idle");
       const error = err instanceof Error ? err : new Error("Screen share cancelled or denied.");
@@ -74,9 +97,13 @@ export class ScreencastRecorder {
 
     this.stream = stream;
 
+    if (hideBrowserChrome) {
+      this.enteredFullscreen = await requestPageFullscreen();
+    }
+
     const mimeType = selectMimeType();
     const recorderOptions: MediaRecorderOptions = {
-      videoBitsPerSecond: this.options.videoBitsPerSecond ?? 2_500_000,
+      videoBitsPerSecond: this.options.videoBitsPerSecond ?? preset.videoBitsPerSecond,
     };
     if (mimeType) recorderOptions.mimeType = mimeType;
 
@@ -116,6 +143,10 @@ export class ScreencastRecorder {
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
     this.mediaRecorder = null;
+    if (this.enteredFullscreen) {
+      this.enteredFullscreen = false;
+      void exitPageFullscreen();
+    }
   }
 
   private downloadBlob(): void {
@@ -132,6 +163,28 @@ export class ScreencastRecorder {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+  }
+}
+
+async function requestPageFullscreen(): Promise<boolean> {
+  const root = document.documentElement;
+  if (document.fullscreenElement) return true;
+  if (typeof root.requestFullscreen !== "function") return false;
+  try {
+    await root.requestFullscreen();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function exitPageFullscreen(): Promise<void> {
+  if (!document.fullscreenElement) return;
+  if (typeof document.exitFullscreen !== "function") return;
+  try {
+    await document.exitFullscreen();
+  } catch {
+    /* already left fullscreen */
   }
 }
 

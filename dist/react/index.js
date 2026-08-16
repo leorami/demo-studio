@@ -451,6 +451,42 @@ function findJourneyById(journeys, id) {
   return journeys.find((j) => j.id === id);
 }
 
+// src/core/screencast-quality.ts
+var SCREENCAST_QUALITIES = ["low", "standard", "high", "maximum"];
+var SCREENCAST_QUALITY_PRESETS = {
+  low: {
+    label: "Low (720p)",
+    videoBitsPerSecond: 12e5,
+    frameRate: 24,
+    width: 1280,
+    height: 720
+  },
+  standard: {
+    label: "Standard (1080p)",
+    videoBitsPerSecond: 25e5,
+    frameRate: 30,
+    width: 1920,
+    height: 1080
+  },
+  high: {
+    label: "High (1080p)",
+    videoBitsPerSecond: 8e6,
+    frameRate: 30,
+    width: 1920,
+    height: 1080
+  },
+  maximum: {
+    label: "Maximum (1440p)",
+    videoBitsPerSecond: 16e6,
+    frameRate: 60,
+    width: 2560,
+    height: 1440
+  }
+};
+function resolveScreencastQuality(value) {
+  return SCREENCAST_QUALITIES.includes(value) ? value : "standard";
+}
+
 // src/core/screencast-recorder.ts
 function isScreencastSupported() {
   return typeof navigator !== "undefined" && typeof navigator.mediaDevices !== "undefined" && typeof navigator.mediaDevices.getDisplayMedia === "function" && typeof MediaRecorder !== "undefined";
@@ -461,6 +497,7 @@ var ScreencastRecorder = class {
   mediaRecorder = null;
   chunks = [];
   _state = "idle";
+  enteredFullscreen = false;
   constructor(options = {}) {
     this.options = options;
   }
@@ -486,13 +523,26 @@ var ScreencastRecorder = class {
     }
     this.setState("requesting");
     this.chunks = [];
+    this.enteredFullscreen = false;
+    const quality = resolveScreencastQuality(this.options.quality);
+    const preset = SCREENCAST_QUALITY_PRESETS[quality];
+    const hideBrowserChrome = this.options.hideBrowserChrome !== false;
     let stream;
     try {
       stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 30 },
+        video: {
+          frameRate: preset.frameRate,
+          width: { ideal: preset.width },
+          height: { ideal: preset.height },
+          ...hideBrowserChrome ? { displaySurface: "browser" } : {}
+        },
         audio: false,
-        // @ts-expect-error — Chrome-specific hint
-        preferCurrentTab: true
+        // Chrome-specific capture hints. Tab capture excludes bookmark / URL / tab bars.
+        preferCurrentTab: hideBrowserChrome,
+        selfBrowserSurface: "include",
+        systemAudio: "exclude",
+        monitorTypeSurfaces: hideBrowserChrome ? "exclude" : "include",
+        surfaceSwitching: hideBrowserChrome ? "exclude" : "include"
       });
     } catch (err) {
       this.setState("idle");
@@ -501,9 +551,12 @@ var ScreencastRecorder = class {
       throw error;
     }
     this.stream = stream;
+    if (hideBrowserChrome) {
+      this.enteredFullscreen = await requestPageFullscreen();
+    }
     const mimeType = selectMimeType();
     const recorderOptions = {
-      videoBitsPerSecond: this.options.videoBitsPerSecond ?? 25e5
+      videoBitsPerSecond: this.options.videoBitsPerSecond ?? preset.videoBitsPerSecond
     };
     if (mimeType) recorderOptions.mimeType = mimeType;
     const recorder = new MediaRecorder(stream, recorderOptions);
@@ -553,6 +606,10 @@ var ScreencastRecorder = class {
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
     this.mediaRecorder = null;
+    if (this.enteredFullscreen) {
+      this.enteredFullscreen = false;
+      void exitPageFullscreen();
+    }
   }
   downloadBlob() {
     if (this.chunks.length === 0) return;
@@ -573,6 +630,25 @@ var ScreencastRecorder = class {
     }, 2e3);
   }
 };
+async function requestPageFullscreen() {
+  const root = document.documentElement;
+  if (document.fullscreenElement) return true;
+  if (typeof root.requestFullscreen !== "function") return false;
+  try {
+    await root.requestFullscreen();
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function exitPageFullscreen() {
+  if (!document.fullscreenElement) return;
+  if (typeof document.exitFullscreen !== "function") return;
+  try {
+    await document.exitFullscreen();
+  } catch {
+  }
+}
 function selectMimeType() {
   const candidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
   return candidates.find((t) => {
@@ -594,14 +670,19 @@ function defaultSettings(journeys) {
     speed: DEMO_SPEED_DEFAULT,
     fingerEnabled: true,
     captionsEnabled: true,
-    defaultMode: "scan"
+    defaultMode: "scan",
+    screencastQuality: "standard",
+    hideBrowserChrome: true
   };
 }
 function loadSettings(storageKey, journeys) {
   try {
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return defaultSettings(journeys);
-    return { ...defaultSettings(journeys), ...JSON.parse(raw) };
+    const parsed = { ...defaultSettings(journeys), ...JSON.parse(raw) };
+    parsed.screencastQuality = resolveScreencastQuality(parsed.screencastQuality);
+    parsed.hideBrowserChrome = parsed.hideBrowserChrome !== false;
+    return parsed;
   } catch {
     return defaultSettings(journeys);
   }
@@ -734,6 +815,8 @@ function createDemoStudioController(opts) {
       setState({ runStatus: "recording-start", recording: true });
       const recorder = new ScreencastRecorder({
         filename: `demo-${state.settings.journeyId}`,
+        quality: state.settings.screencastQuality,
+        hideBrowserChrome: state.settings.hideBrowserChrome,
         onStateChange: (recorderState) => setState({ recorderState }),
         onError: (err) => {
           setState({ errorMsg: err.message, runStatus: "idle", running: false, recording: false });
@@ -1057,10 +1140,25 @@ function DemoStudioPanel({ controller }) {
                 }
               )
             ] }),
+            /* @__PURE__ */ jsxs4("div", { className: "demo-studio-field-group", children: [
+              /* @__PURE__ */ jsx4("label", { htmlFor: "demo-studio-quality", className: "demo-studio-field-label", children: "Screencast quality" }),
+              /* @__PURE__ */ jsx4(
+                "select",
+                {
+                  id: "demo-studio-quality",
+                  className: "demo-studio-select",
+                  value: settings.screencastQuality,
+                  onChange: (e) => actions.setSetting("screencastQuality", e.currentTarget.value),
+                  "data-testid": "kyzmet-demo-studio-quality",
+                  children: SCREENCAST_QUALITIES.map((quality) => /* @__PURE__ */ jsx4("option", { value: quality, children: SCREENCAST_QUALITY_PRESETS[quality].label }, quality))
+                }
+              )
+            ] }),
             /* @__PURE__ */ jsxs4("div", { className: "demo-studio-settings-inset", children: [
               /* @__PURE__ */ jsx4(ToggleRow, { id: "demo-studio-finger", label: "Finger overlay", description: "Show the guided tap dot during the demo.", checked: settings.fingerEnabled, onChange: (v) => actions.setSetting("fingerEnabled", v), testId: "kyzmet-demo-studio-finger-toggle" }),
               /* @__PURE__ */ jsx4(ToggleRow, { id: "demo-studio-captions", label: "Captions", description: "Show narration pills during caption steps.", checked: settings.captionsEnabled, onChange: (v) => actions.setSetting("captionsEnabled", v), testId: "kyzmet-demo-studio-captions-toggle" }),
-              /* @__PURE__ */ jsx4(ToggleRow, { id: "demo-studio-default-mode", label: "Read scroll mode", description: "On: linger and read each page. Off: skim-scan pace.", checked: settings.defaultMode === "read", onChange: (readMode) => actions.setSetting("defaultMode", readMode ? "read" : "scan"), testId: "kyzmet-demo-studio-default-mode" })
+              /* @__PURE__ */ jsx4(ToggleRow, { id: "demo-studio-default-mode", label: "Read scroll mode", description: "On: linger and read each page. Off: skim-scan pace.", checked: settings.defaultMode === "read", onChange: (readMode) => actions.setSetting("defaultMode", readMode ? "read" : "scan"), testId: "kyzmet-demo-studio-default-mode" }),
+              /* @__PURE__ */ jsx4(ToggleRow, { id: "demo-studio-hide-chrome", label: "Page contents only", description: "Hide bookmark, URL, and tab bars. Choose this tab in the browser share picker.", checked: settings.hideBrowserChrome, onChange: (v) => actions.setSetting("hideBrowserChrome", v), testId: "kyzmet-demo-studio-hide-chrome" })
             ] }),
             stepLabel && /* @__PURE__ */ jsxs4("p", { className: "demo-studio-status", children: [
               "\u2192 ",

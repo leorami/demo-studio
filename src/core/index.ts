@@ -37,6 +37,12 @@ export type { ParsedRefinement } from "./command-parser.js";
 
 export { ScreencastRecorder, isScreencastSupported } from "./screencast-recorder.js";
 export type { ScreencastRecorderOptions, RecorderState } from "./screencast-recorder.js";
+export {
+  SCREENCAST_QUALITIES,
+  SCREENCAST_QUALITY_PRESETS,
+  resolveScreencastQuality,
+} from "./screencast-quality.js";
+export type { ScreencastQuality, ScreencastQualityPreset } from "./screencast-quality.js";
 
 export {
   scrollContainerToTestId,
