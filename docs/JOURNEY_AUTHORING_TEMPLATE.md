@@ -127,6 +127,19 @@ Optional feedback for generic patterns worth extracting to `@leorami/demo-studio
 
 ---
 
+## Autopilot targeting
+
+```
+click test ids:
+  - <stable data-testid for each click step>
+navigate waitForTestId:
+  - <optional host-shell test id that must be mounted after routing>
+scroll containerTestId:
+  - <optional overflow container test id; omit to use the host main scroller>
+```
+
+Click steps poll until the target is visible. After `navigate`, set `waitForTestId` when the destination shell mounts asynchronously so autopilot does not click too early. Keep identifiers generic in this worksheet.
+
 ## prepareDemo reminder
 
 Before autopilot starts, the host should implement `prepareDemo(journeyId)` to satisfy the reset/replay expectations above. See the **prepareDemo host contract** section in the package README for required behavior.
