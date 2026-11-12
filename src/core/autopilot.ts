@@ -18,6 +18,8 @@ import type {
   AutopilotEventHandler,
   AutopilotNavigateOptions,
   AutopilotRun,
+  AutopilotRunOutcome,
+  AutopilotVerificationFailureCode,
   DemoScrollMode,
   DemoStep,
 } from "./types.js";
@@ -143,6 +145,18 @@ export interface AutopilotOptions {
   /** Max wait for click targets and optional post-navigate test ids. */
   elementWaitMs?: number;
   mainScrollTestId?: string;
+  /** Opt-in fail-closed target verification. Default presentation mode remains lenient. */
+  strict?: boolean;
+}
+
+class MissingRequiredTarget extends Error {
+  constructor(
+    readonly code: Exclude<AutopilotVerificationFailureCode, "step_error">,
+    readonly stepIndex: number,
+    readonly testId: string,
+  ) {
+    super(`Required demo target not found: ${testId}`);
+  }
 }
 
 /** Viewport-height ratio for the reading/caption finger. Keep in sync with `--demo-studio-reading-finger-y`. */
@@ -165,6 +179,9 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
   let aborted = false;
   let resolveRun!: () => void;
   const done = new Promise<void>((res) => { resolveRun = res; });
+  let resolveOutcome!: (value: AutopilotRunOutcome) => void;
+  const outcome = new Promise<AutopilotRunOutcome>((res) => { resolveOutcome = res; });
+  let activeStepIndex = -1;
 
   function emit(event: AutopilotEvent): void { opts.onEvent(event); }
 
@@ -259,10 +276,13 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
         emit({ type: "move", x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight / 2) });
         await sleep(navigateSettleMs);
         if (step.waitForTestId) {
-          await waitForTestId(step.waitForTestId, {
+          const ready = await waitForTestId(step.waitForTestId, {
             timeoutMs: elementWaitMs,
             signal: abortController.signal,
           });
+          if (!ready && !aborted && opts.strict) {
+            throw new MissingRequiredTarget("missing_navigate_target", index, step.waitForTestId);
+          }
         }
         break;
       }
@@ -277,6 +297,7 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
         });
         if (!el || aborted) {
           if (!el && !aborted) {
+            if (opts.strict) throw new MissingRequiredTarget("missing_click_target", index, step.testId);
             console.warn(`[demo-autopilot] click target not found: ${step.testId}`);
           }
           break;
@@ -313,17 +334,41 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
   }
 
   async function runAll(): Promise<void> {
+    let failure: Extract<AutopilotRunOutcome, { status: "failed" }> | null = null;
     try {
       for (let i = 0; i < opts.steps.length; i++) {
         if (aborted) break;
+        activeStepIndex = i;
         await runStep(opts.steps[i]!, i);
       }
     } catch (err) {
-      console.error("[demo-autopilot] step failed:", err);
-      aborted = true;
+      if (!aborted && opts.strict) {
+        failure = err instanceof MissingRequiredTarget
+          ? { status: "failed", code: err.code, stepIndex: err.stepIndex, testId: err.testId }
+          : { status: "failed", code: "step_error", stepIndex: activeStepIndex };
+        // Do not log DOM content or browser secrets in verification receipts.
+      } else if (!aborted) {
+        console.error("[demo-autopilot] step failed:", err);
+        aborted = true;
+      }
     } finally {
-      emit(aborted ? { type: "abort" } : { type: "done" });
-      resolveRun();
+      const result: AutopilotRunOutcome = failure ??
+        (aborted ? { status: "aborted" } : { status: "completed" });
+      try {
+        if (result.status === "failed") {
+          emit({
+            type: "failed",
+            code: result.code,
+            stepIndex: result.stepIndex,
+            ...(result.testId ? { testId: result.testId } : {}),
+          });
+        } else {
+          emit(result.status === "aborted" ? { type: "abort" } : { type: "done" });
+        }
+      } finally {
+        resolveOutcome(result);
+        resolveRun();
+      }
     }
   }
 
@@ -331,6 +376,7 @@ export function runAutopilot(opts: AutopilotOptions): AutopilotRun {
 
   return {
     done,
+    outcome,
     abort() {
       aborted = true;
       abortController.abort();
