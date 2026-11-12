@@ -4,6 +4,13 @@ All notable changes to `@leorami/demo-studio` are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — CTO source-only candidate (not tagged or published)
+
+- Optional `strict` demo target verification fails closed on absent click and post-navigation readiness selectors instead of silently completing.
+- Typed `AutopilotRun.outcome` distinguishes completed, aborted, and failed journeys; failure events preserve safe step index and test ID.
+- React/Preact host controllers can opt in to strict journeys and display a failed state. Default narrated presentations remain backward compatible.
+- This is **not** a release, backend mutation proof, macOS permission, or owner UAT result. Project-specific checks remain required.
+
 ## [0.3.0] — 2026-08-16
 
 Additive, backward-compatible release on top of tagged `v0.2.0`. Includes GitHub pull requests #6–#8.

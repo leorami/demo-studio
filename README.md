@@ -192,6 +192,35 @@ import { waitForTestId } from "@leorami/demo-studio";
 await waitForTestId("home-ready", { timeoutMs: 8_000 });
 ```
 
+## Verification journeys — fail closed (source candidate, not yet published)
+
+The default `runAutopilot` experience is a **presentation**. A missing click target may log a warning and the guided tour can continue; `type: "done"` therefore means *the presentation ended*, never that UAT passed.
+
+For pre-owner QA, opt in to strict target checking and read the structured outcome instead of treating `done`, a recording, or a screenshot as a test verdict:
+
+```ts
+import { runAutopilot } from "@leorami/demo-studio";
+
+const run = runAutopilot({
+  steps: [
+    { kind: "navigate", routeId: "editor", waitForTestId: "editor-ready" },
+    { kind: "click", testId: "review-task" },
+  ],
+  navigate: (routeId) => host.navigate(routeId),
+  onEvent: (event) => host.renderDemoEvent(event),
+  strict: true, // opt-in, presentation mode remains unchanged by default
+});
+await run.done;
+const result = await run.outcome;
+if (result.status !== "completed") {
+  throw new Error(`Demo verification failed or was cancelled: ${result.status}`);
+}
+```
+
+Alternatively set `strict: true` in `createDemoStudioController` or `<DemoStudio />`. The controller exposes `runStatus: "failed"` and a visible error when a required click or post-navigation target is absent; subsequent steps will **not** run. Missing selectors in strict mode yield `missing_click_target` or `missing_navigate_target` plus the step index and test id. An intentional abort is `aborted`, not `failed`.
+
+**Important limitations:** a `completed` strict run confirms only that required DOM targets were found and steps executed; it does **not** prove a backend mutation, a real Git commit, a Mac owner grant, a deployment, or owner UAT. Native Tauri/AppKit controls need an independently authorized native adapter. Continue using canonical application tests and exact source/diff/authority evidence; recordings are supplementary visual evidence. Existing browser screen-capture permission still applies. No production authentication or permission override is provided by this mode.
+
 ## Screencast
 
 Screencast uses the browser's native screen-share picker (`getDisplayMedia`) plus `MediaRecorder`. It cannot bypass that permission flow. Use Chrome or Edge; embedded browsers without `getDisplayMedia` show Screencast as unavailable.

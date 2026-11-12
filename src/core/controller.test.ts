@@ -289,3 +289,30 @@ describe("destroy", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 });
+
+
+describe("host opt-in verification mode", () => {
+  it("RED: controller surfaces failed verification instead of a false completed demo", async () => {
+    const ctrl = createDemoStudioController({
+      journeys: [{
+        id: "strict-missing",
+        label: "Strict",
+        description: "Required target must exist",
+        estimatedSeconds: 1,
+        steps: [{ kind: "click", testId: "critical-approval-button" }],
+      }],
+      ...makeAdapters(),
+      storageKey: "strict-demo-studio-test",
+      strict: true,
+      elementWaitMs: 30,
+    });
+    await ctrl.actions.startRun();
+    expect(ctrl.getState().runStatus).toBe("failed");
+    expect(ctrl.getState().running).toBe(false);
+    expect(ctrl.getState().errorMsg).toMatch(/required.*target|missing/i);
+    expect(ctrl.getState().autopilotEvent).toMatchObject({
+      type: "failed", code: "missing_click_target", stepIndex: 0,
+    });
+    ctrl.destroy();
+  });
+});

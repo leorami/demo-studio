@@ -70,7 +70,7 @@ function saveSettings(storageKey: string, s: DemoStudioSettings): void {
 // Run status
 // ---------------------------------------------------------------------------
 
-export type RunStatus = "idle" | "running" | "done" | "aborted" | "recording-start" | "recording";
+export type RunStatus = "idle" | "running" | "done" | "aborted" | "failed" | "recording-start" | "recording";
 
 // ---------------------------------------------------------------------------
 // State
@@ -125,6 +125,10 @@ export interface DemoStudioOptions extends DemoStudioAdapters {
   journeys: DemoJourney[];
   storageKey?: string;
   mainScrollTestId?: string;
+  /** For verification journeys only. Presentation mode stays backwards-compatible. */
+  strict?: boolean;
+  /** Time to wait for host-mounted controls and post-navigation markers. */
+  elementWaitMs?: number;
   defaultSettings?: Partial<DemoStudioSettings>;
   onRunningChange?: (running: boolean) => void;
 }
@@ -197,8 +201,14 @@ export function createDemoStudioController(opts: DemoStudioOptions): DemoStudioC
 
     if (event.type === "done") { runStatus = "done"; stepLabel = null; running = false; opts.onRunningChange?.(false); }
     if (event.type === "abort") { runStatus = "aborted"; stepLabel = null; running = false; opts.onRunningChange?.(false); }
+    if (event.type === "failed") { runStatus = "failed"; stepLabel = null; running = false; opts.onRunningChange?.(false); }
 
-    setState({ autopilotEvent: event, stepLabel, runStatus, running });
+    setState({
+      autopilotEvent: event, stepLabel, runStatus, running,
+      errorMsg: event.type === "failed"
+        ? `Required demo target or step failed at index ${event.stepIndex} (${event.code}).`
+        : state.errorMsg,
+    });
   }
 
   async function beginDemoRun(): Promise<{ steps: DemoStep[]; pacing: DemoPacing } | null> {
@@ -238,6 +248,8 @@ export function createDemoStudioController(opts: DemoStudioOptions): DemoStudioC
         seed: opts.seed,
         onEvent: handleAutopilotEvent,
         mainScrollTestId: opts.mainScrollTestId,
+        strict: opts.strict,
+        elementWaitMs: opts.elementWaitMs,
       });
       runRef = run;
       await run.done;
@@ -281,6 +293,8 @@ export function createDemoStudioController(opts: DemoStudioOptions): DemoStudioC
         seed: opts.seed,
         onEvent: handleAutopilotEvent,
         mainScrollTestId: opts.mainScrollTestId,
+        strict: opts.strict,
+        elementWaitMs: opts.elementWaitMs,
       });
       runRef = run;
       await run.done;
