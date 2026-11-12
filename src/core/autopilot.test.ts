@@ -92,4 +92,60 @@ describe("runAutopilot wait and scroll behavior", () => {
     expect(events.some((event) => event.type === "scroll")).toBe(false);
     expect(events.at(-1)).toEqual({ type: "done" });
   });
+  it("RED: verification mode fails closed on a missing click without running later actions", async () => {
+    const later = mountButton("later-destructive-looking-action");
+    const clicked = vi.fn();
+    later.addEventListener("click", clicked);
+    const { events, run } = collectRun([
+      { kind: "click", testId: "missing-required-control" },
+      { kind: "click", testId: "later-destructive-looking-action" },
+    ], { strict: true, elementWaitMs: 35 });
+    await run.done;
+    expect(await run.outcome).toEqual({
+      status: "failed", code: "missing_click_target",
+      stepIndex: 0, testId: "missing-required-control",
+    });
+    expect(clicked).not.toHaveBeenCalled();
+    expect(events.at(-1)).toEqual({
+      type: "failed", code: "missing_click_target",
+      stepIndex: 0, testId: "missing-required-control",
+    });
+  });
+
+  it("RED: verification mode rejects a missing post-navigation readiness target", async () => {
+    const { events, run } = collectRun([
+      { kind: "navigate", routeId: "editor", waitForTestId: "editor-ready" },
+      { kind: "caption", text: "This must not be presented as completed." },
+    ], { strict: true, navigateSettleMs: 0, elementWaitMs: 35 });
+    await run.done;
+    expect(await run.outcome).toEqual({
+      status: "failed", code: "missing_navigate_target",
+      stepIndex: 0, testId: "editor-ready",
+    });
+    expect(events.some((event) => event.type === "caption")).toBe(false);
+  });
+
+  it("RED: verification mode reports completion for a real visible target, not owner UAT PASS", async () => {
+    const button = mountButton("required-control");
+    const clicked = vi.fn();
+    button.addEventListener("click", clicked);
+    const { events, run } = collectRun([
+      { kind: "click", testId: "required-control" },
+    ], { strict: true });
+    await run.done;
+    expect(clicked).toHaveBeenCalledTimes(1);
+    expect(await run.outcome).toEqual({ status: "completed" });
+    expect(events.at(-1)).toEqual({ type: "done" });
+  });
+
+  it("RED: cancellation is not falsely reported as a target failure", async () => {
+    const { events, run } = collectRun([
+      { kind: "click", testId: "not-yet-mounted" },
+    ], { strict: true, elementWaitMs: 500 });
+    setTimeout(() => run.abort(), 10);
+    await run.done;
+    expect(await run.outcome).toEqual({ status: "aborted" });
+    expect(events.at(-1)).toEqual({ type: "abort" });
+  });
+
 });
