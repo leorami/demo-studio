@@ -23,6 +23,26 @@ export interface DemoJourney {
   steps: DemoStep[];
 }
 
+/**
+ * An actual journey execution outcome, not owner UAT PASS or source validation.
+ * "completed" only means all steps ran. For target checking, hosts must opt
+ * in to strict mode and still independently validate domain assertions.
+ */
+export type AutopilotVerificationFailureCode =
+  | "missing_click_target"
+  | "missing_navigate_target"
+  | "step_error";
+
+export type AutopilotRunOutcome =
+  | { status: "completed" }
+  | { status: "aborted" }
+  | {
+      status: "failed";
+      code: AutopilotVerificationFailureCode;
+      stepIndex: number;
+      testId?: string;
+    };
+
 export type AutopilotEvent =
   | { type: "move"; x: number; y: number }
   | { type: "click"; x: number; y: number; testId: string }
@@ -31,12 +51,15 @@ export type AutopilotEvent =
   | { type: "caption-clear" }
   | { type: "step-start"; step: DemoStep; index: number }
   | { type: "done" }
-  | { type: "abort" };
+  | { type: "abort" }
+  | { type: "failed"; code: AutopilotVerificationFailureCode; stepIndex: number; testId?: string };
 
 export type AutopilotEventHandler = (event: AutopilotEvent) => void;
 
 export interface AutopilotRun {
   done: Promise<void>;
+  /** Always resolves to a concrete outcome, never an implicit UAT PASS. */
+  outcome: Promise<AutopilotRunOutcome>;
   abort(): void;
 }
 
