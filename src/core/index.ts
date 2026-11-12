@@ -13,6 +13,8 @@ export type {
   AutopilotEvent,
   AutopilotEventHandler,
   AutopilotRun,
+  AutopilotRunOutcome,
+  AutopilotVerificationFailureCode,
   AutopilotNavigateOptions,
   DemoStudioAdapters,
 } from "./types.js";
