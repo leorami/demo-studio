@@ -4,17 +4,15 @@
  * Captures an existing loopback-served, explicitly synthetic HTML view only.
  * A host-header assertion is NOT proof of owner-native/source parity or privacy.
  * Never reuses browser profiles, captures a remote URL, uploads pixels, or
- * starts/stops the host app. No third-party packages required.
+ * starts/stops the host app. Requires host-provided Playwright Core.
  */
 import { execFileSync } from 'node:child_process';
-import { promisify } from 'node:util';
-import { execFile } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
-const run = promisify(execFile);
 const SHA = /^[0-9a-f]{40}$/;
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const PNG_SIG = Buffer.from([137,80,78,71,13,10,26,10]);
@@ -74,17 +72,29 @@ async function main() {
   const stem = o.id + '-' + checkout.slice(0,12);
   const pngPath = join(out, stem+'.png'), manifestPath=join(out, stem+'.json');
   if (existsSync(pngPath) || existsSync(manifestPath)) fail('ARTIFACT_EXISTS');
-  const profile = mkdtempSync(join(tmpdir(),'demo-studio-capture-profile-'));
+  let automation;
   try {
-    const args = [
-      '--headless=new','--disable-gpu','--disable-background-networking',
-      '--no-first-run','--no-default-browser-check','--hide-scrollbars',
-      '--force-device-scale-factor=1','--window-size='+width+','+height,
-      '--virtual-time-budget=2000','--user-data-dir='+profile,
-      '--screenshot='+pngPath,url.href,
-    ];
-    try { await run(browser,args,{timeout:30000,maxBuffer:200000}); }
-    catch { fail('BROWSER_FAILED'); }
+    const supplied=process.env.DEMO_STUDIO_PLAYWRIGHT_MODULE;
+    automation=supplied
+      ? await import(pathToFileURL(resolve(supplied)).href)
+      : await import('playwright-core');
+  } catch { fail('AUTOMATION_UNAVAILABLE'); }
+  if (!automation.chromium || typeof automation.chromium.launch !== 'function') fail('AUTOMATION_UNAVAILABLE');
+  let runningBrowser;
+  try {
+    runningBrowser=await automation.chromium.launch({executablePath:browser,headless:true,timeout:20000});
+    const context=await runningBrowser.newContext({viewport:{width,height},deviceScaleFactor:1});
+    await context.route('**/*',async(route)=>{
+      let allowed=false;
+      try {allowed=new URL(route.request().url()).origin===url.origin;} catch {allowed=false;}
+      if(allowed) await route.continue(); else await route.abort();
+    });
+    const page=await context.newPage();
+    const navigation=await page.goto(url.href,{waitUntil:'domcontentloaded',timeout:15000});
+    const headers=navigation?.headers() || {};
+    if (navigation?.status()!==200 || headers['x-demo-source-commit']!==checkout ||
+        headers['x-demo-synthetic-only']!=='true') fail('SOURCE_MISMATCH');
+    await page.screenshot({path:pngPath,animations:'disabled',caret:'hide',timeout:15000});
     if (!existsSync(pngPath) || lstatSync(pngPath).isSymbolicLink()) fail('INVALID_PNG');
     const bytes=readFileSync(pngPath), pngPixels=pngDimensions(bytes);
     if (pngPixels.width !== width || pngPixels.height !== height) fail('VIEWPORT_MISMATCH');
@@ -105,6 +115,6 @@ async function main() {
     // Clean only this command's newly-created PNG; never touch an existing file.
     if (existsSync(pngPath)) rmSync(pngPath,{force:true});
     throw e;
-  } finally { rmSync(profile,{recursive:true,force:true}); }
+  } finally { try { await runningBrowser?.close(); } catch { /* transient browser shutdown */ } }
 }
 main().catch(e=>{process.stderr.write((e.message||'DEMO_CAPTURE_FAILED')+'\n');process.exitCode=1;});
