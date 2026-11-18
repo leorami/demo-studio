@@ -38,7 +38,8 @@ async function fixture({ servedCommit = null, synthetic = 'true' } = {}) {
 }
 async function attempt(f, extra=[]) {
   const args=[script,'--url',f.url,'--repo',f.repo,'--sha',f.sha,'--out',f.out,
-    '--id','first-fold','--browser',f.browser,'--width','1','--height','1',...extra];
+    '--id','first-fold','--browser',f.browser,'--width','1','--height','1'];
+  for(let i=0;i<extra.length;i+=2){const at=args.indexOf(extra[i]);assert.ok(at>0);args[at+1]=extra[i+1];}
   try { const r=await run(process.execPath,args,{timeout:10000}); return {code:0,stdout:r.stdout,stderr:r.stderr}; }
   catch(e){ return {code:e.code,stdout:e.stdout,stderr:e.stderr}; }
 }
