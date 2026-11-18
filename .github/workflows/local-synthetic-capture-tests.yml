@@ -1,0 +1,34 @@
+name: Demo Studio local synthetic screenshot contracts (not screenshot capture)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/capture-local-browser.mjs'
+      - 'scripts/capture-local-browser.test.mjs'
+      - '.github/workflows/local-synthetic-capture-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture-contracts:
+    if: github.event.pull_request.head.repo.full_name == 'leorami/demo-studio'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch exact proposed source without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm JavaScript parser
+        run: node --check scripts/capture-local-browser.mjs
+      - name: Check RED-first local and negative source/identity cases
+        run: node --test scripts/capture-local-browser.test.mjs
+
+# No real browser, signed-in app, native Mac, media, capture, upload, secrets or deploy.
+# These source-fixture tests alone NEVER establish owner UI or screenshot success.
