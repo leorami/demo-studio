@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, chmodSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -11,7 +11,7 @@ const run = promisify(execFile);
 const script = new URL('./capture-local-browser.mjs', import.meta.url).pathname;
 const originalPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y5M2S0AAAAASUVORK5CYII=', 'base64');
 
-async function fixture({ servedCommit = null, synthetic = 'true' } = {}) {
+async function fixture({ servedCommit = null, synthetic = 'true', racingWriter = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'demo-capture-test-'));
   const repo = join(root, 'source'); const out = join(root, 'out');
   mkdirSync(repo); mkdirSync(out);
@@ -31,7 +31,7 @@ async function fixture({ servedCommit = null, synthetic = 'true' } = {}) {
     'export const chromium={launch:async()=>({',
     'newContext:async()=>({route:async()=>{},newPage:async()=>({',
     "goto:async()=>({status:()=>200,headers:()=>({'x-demo-source-commit':"+JSON.stringify(sha)+",'x-demo-synthetic-only':'true'})}),",
-    'screenshot:async({path})=>writeFileSync(path,Buffer.from('+JSON.stringify(originalPng.toString('base64'))+",'base64'))",
+    'screenshot:async({path})=>{'+(racingWriter?"writeFileSync(path,'KEEP_ME');":'')+'return Buffer.from('+JSON.stringify(originalPng.toString('base64'))+",'base64');}",
     '})}),close:async()=>{}})};',
   ].join('\n');
   writeFileSync(driver, driverScript);
@@ -85,5 +85,22 @@ test('RED: external URL and embedded credentials cannot trigger browser screensh
 test('RED: repository SHA mismatch refuses screenshot without altering artifacts',async()=>{
   const f=await fixture();try{const r=await attempt(f,['--sha','b'.repeat(40)]);
     assert.notEqual(r.code,0);assert.match(r.stderr,/SOURCE_MISMATCH/);assert.equal(readdirSync(f.out).length,0);
+  }finally{await f.close()}
+});
+
+test('RED: screenshots use exclusive owner-readable permissions rather than provider default image permissions',async()=>{
+  const f=await fixture();try{
+    const r=await attempt(f);assert.equal(r.code,0,r.stderr);
+    for(const file of readdirSync(f.out)){
+      assert.equal(statSync(join(f.out,file)).mode & 0o777,0o600,file+' must be private');
+    }
+  }finally{await f.close()}
+});
+test('RED: a race-created screenshot is never overwritten or deleted during cleanup',async()=>{
+  const f=await fixture({racingWriter:true});try{
+    const r=await attempt(f);assert.notEqual(r.code,0);
+    const entries=readdirSync(f.out);assert.equal(entries.length,1);
+    assert.match(entries[0],/\.png$/);
+    assert.equal(readFileSync(join(f.out,entries[0]),'utf8'),'KEEP_ME');
   }finally{await f.close()}
 });
