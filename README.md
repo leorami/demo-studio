@@ -221,6 +221,14 @@ Alternatively set `strict: true` in `createDemoStudioController` or `<DemoStudio
 
 **Important limitations:** a `completed` strict run confirms only that required DOM targets were found and steps executed; it does **not** prove a backend mutation, a real Git commit, a Mac owner grant, a deployment, or owner UAT. Native Tauri/AppKit controls need an independently authorized native adapter. Continue using canonical application tests and exact source/diff/authority evidence; recordings are supplementary visual evidence. Existing browser screen-capture permission still applies. No production authentication or permission override is provided by this mode.
 
+## Still screenshots: source-claimed local synthetic browser route (CTO draft)
+
+**Unreleased / not a native Mac capture.** The optional `scripts/capture-local-browser.mjs` probe uses host-supplied Playwright Core and an isolated headless Chromium context to save the **original PNG bytes** and a SHA-256/viewport/source-provenance manifest for an already running, explicitly synthetic loopback-hosted browser route. It does **not** interact with the owner's desktop, browser screen-share picker, native WKWebView, or privately signed-in application.
+
+The host must serve `X-Demo-Source-Commit: <actual-Git-HEAD>` and `X-Demo-Synthetic-Only: true` headers; those are assertions, **not independent verification of served assets or private content**. A human/operator must inspect synthetic-only contents before export. The tool refuses external URLs, missing/mismatched headers and source SHA, cross-origin requests, and overwriting existing artifacts. It does not upload images. Output `captureKind: BROWSER_HEADLESS` is **not** `NATIVE_WKWEBVIEW` or owner UAT PASS.
+
+Usage, evidence trust boundaries, test commands and the **still-unimplemented** host-native snapshot adapter are documented in [Source-exact capture and native boundary](docs/SOURCE_EXACT_CAPTURE_AND_NATIVE_BOUNDARY_V1.md). The existing screencast recorder below remains a separate, user-initiated browser share-picker feature.
+
 ## Screencast
 
 Screencast uses the browser's native screen-share picker (`getDisplayMedia`) plus `MediaRecorder`. It cannot bypass that permission flow. Use Chrome or Edge; embedded browsers without `getDisplayMedia` show Screencast as unavailable.
