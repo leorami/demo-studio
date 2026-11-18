@@ -31,7 +31,7 @@ async function fixture({ servedCommit = null, synthetic = 'true', racingWriter =
     'export const chromium={launch:async()=>({',
     'newContext:async()=>({route:async()=>{},newPage:async()=>({',
     "goto:async()=>({status:()=>200,headers:()=>({'x-demo-source-commit':"+JSON.stringify(sha)+",'x-demo-synthetic-only':'true'})}),",
-    'screenshot:async({path})=>{'+(racingWriter?"writeFileSync(path,'KEEP_ME');":'')+'return Buffer.from('+JSON.stringify(originalPng.toString('base64'))+",'base64');}",
+    'screenshot:async()=>{'+(racingWriter?"writeFileSync("+JSON.stringify(join(out,'first-fold-'+sha.slice(0,12)+'.png'))+",'KEEP_ME');":'')+'return Buffer.from('+JSON.stringify(originalPng.toString('base64'))+",'base64');}",
     '})}),close:async()=>{}})};',
   ].join('\n');
   writeFileSync(driver, driverScript);
