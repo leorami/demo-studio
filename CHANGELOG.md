@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased] — CTO source-only candidate (not tagged or published)
 
+- Added opt-in source-claimed loopback-only headless Chromium screenshot CLI and original PNG/SHA/viewport evidence manifest; native WKWebView capture still requires a separately trusted host adapter and is NOT implemented.
+
 - Optional `strict` demo target verification fails closed on absent click and post-navigation readiness selectors instead of silently completing.
 - Typed `AutopilotRun.outcome` distinguishes completed, aborted, and failed journeys; failure events preserve safe step index and test ID.
 - React/Preact host controllers can opt in to strict journeys and display a failed state. Default narrated presentations remain backward compatible.
