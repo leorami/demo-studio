@@ -9,7 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
@@ -81,6 +81,7 @@ async function main() {
   } catch { fail('AUTOMATION_UNAVAILABLE'); }
   if (!automation.chromium || typeof automation.chromium.launch !== 'function') fail('AUTOMATION_UNAVAILABLE');
   let runningBrowser;
+  let createdPng = false;
   try {
     runningBrowser=await automation.chromium.launch({executablePath:browser,headless:true,timeout:20000});
     const context=await runningBrowser.newContext({viewport:{width,height},deviceScaleFactor:1});
@@ -94,9 +95,18 @@ async function main() {
     const headers=navigation?.headers() || {};
     if (navigation?.status()!==200 || headers['x-demo-source-commit']!==checkout ||
         headers['x-demo-synthetic-only']!=='true') fail('SOURCE_MISMATCH');
-    await page.screenshot({path:pngPath,animations:'disabled',caret:'hide',timeout:15000});
-    if (!existsSync(pngPath) || lstatSync(pngPath).isSymbolicLink()) fail('INVALID_PNG');
-    const bytes=readFileSync(pngPath), pngPixels=pngDimensions(bytes);
+    // Playwright returns the original screenshot bytes, not a provider-chosen
+    // filesystem write. Exclusive creation prevents race clobber and 0600
+    // keeps future private-host integrations from leaking pixels by default.
+    const bytes = Buffer.from(await page.screenshot({type:'png',animations:'disabled',caret:'hide',timeout:15000}));
+    const pngPixels=pngDimensions(bytes);
+    try {
+      writeFileSync(pngPath,bytes,{flag:'wx',mode:0o600});
+      createdPng = true;
+    } catch (error) {
+      if (error?.code === 'EEXIST') fail('ARTIFACT_EXISTS');
+      throw error;
+    }
     if (pngPixels.width !== width || pngPixels.height !== height) fail('VIEWPORT_MISMATCH');
     const pngSha256=createHash('sha256').update(bytes).digest('hex');
     const manifest = {
@@ -112,8 +122,9 @@ async function main() {
     writeFileSync(manifestPath,JSON.stringify(manifest,null,2)+'\n',{flag:'wx',mode:0o600});
     process.stdout.write(JSON.stringify({ok:true,manifest})+'\n');
   } catch(e) {
-    // Clean only this command's newly-created PNG; never touch an existing file.
-    if (existsSync(pngPath)) rmSync(pngPath,{force:true});
+    // A concurrent writer may have created this path after the initial check.
+    // NEVER remove or overwrite that other file on failure.
+    if (createdPng && existsSync(pngPath)) rmSync(pngPath,{force:true});
     throw e;
   } finally { try { await runningBrowser?.close(); } catch { /* transient browser shutdown */ } }
 }
