@@ -24,8 +24,17 @@ async function fixture({ servedCommit = null, synthetic = 'true' } = {}) {
   const { stdout } = await run('git', ['-C', repo, 'rev-parse', 'HEAD']);
   const sha = stdout.trim();
   const browser = join(root, 'mock-chromium.mjs');
-  writeFileSync(browser, '#!/usr/bin/env node\nimport {writeFileSync} from "node:fs";\nconst p = process.argv.find(a=>a.startsWith("--screenshot="));\nif(!p) process.exit(2);\nwriteFileSync(p.slice(13), Buffer.from("'+originalPng.toString('base64')+'", "base64"));\n');
-  chmodSync(browser, 0o700);
+  writeFileSync(browser, '// Fake browser path; Playwright provider owns capture\n');
+  const driver = join(root, 'fake-playwright.mjs');
+  const driverScript = [
+    "import {writeFileSync} from 'node:fs';",
+    'export const chromium={launch:async()=>({',
+    'newContext:async()=>({route:async()=>{},newPage:async()=>({',
+    "goto:async()=>({status:()=>200,headers:()=>({'x-demo-source-commit':"+JSON.stringify(sha)+",'x-demo-synthetic-only':'true'})}),",
+    'screenshot:async({path})=>writeFileSync(path,Buffer.from('+JSON.stringify(originalPng.toString('base64'))+",'base64'))",
+    '})}),close:async()=>{}})};',
+  ].join('\n');
+  writeFileSync(driver, driverScript);
   const server = createServer((_req, res) => {
     if (servedCommit !== 'missing') res.setHeader('X-Demo-Source-Commit', servedCommit || sha);
     if (synthetic !== null) res.setHeader('X-Demo-Synthetic-Only', synthetic);
@@ -33,14 +42,14 @@ async function fixture({ servedCommit = null, synthetic = 'true' } = {}) {
     res.end('<!doctype html><title>Public synthetic test</title><h1>Example</h1>');
   });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
-  return { root, repo, out, browser, sha, url:'http://127.0.0.1:'+server.address().port+'/',
+  return { root, repo, out, browser, driver, sha, url:'http://127.0.0.1:'+server.address().port+'/',
     close:async()=>{await new Promise(r=>server.close(r));rmSync(root,{recursive:true,force:true});} };
 }
 async function attempt(f, extra=[]) {
   const args=[script,'--url',f.url,'--repo',f.repo,'--sha',f.sha,'--out',f.out,
     '--id','first-fold','--browser',f.browser,'--width','1','--height','1'];
   for(let i=0;i<extra.length;i+=2){const at=args.indexOf(extra[i]);assert.ok(at>0);args[at+1]=extra[i+1];}
-  try { const r=await run(process.execPath,args,{timeout:10000}); return {code:0,stdout:r.stdout,stderr:r.stderr}; }
+  try { const r=await run(process.execPath,args,{timeout:10000,env:{...process.env,DEMO_STUDIO_PLAYWRIGHT_MODULE:f.driver}}); return {code:0,stdout:r.stdout,stderr:r.stderr}; }
   catch(e){ return {code:e.code,stdout:e.stdout,stderr:e.stderr}; }
 }
 
